@@ -13,6 +13,8 @@ Log expenses in seconds, see where your money goes, stay within budget and track
 ![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
+**[⬇ Download the latest APK](https://github.com/thekirankumarv/SmartWallet/releases/latest)**
+
 </div>
 
 <p align="center">
@@ -115,6 +117,10 @@ src/
     └── types.ts            Data model
 scripts/e2e.mjs             End-to-end UI test
 ```
+
+## Install
+
+Download `SmartWallet-vX.Y.Z.apk` from [Releases](https://github.com/thekirankumarv/SmartWallet/releases/latest) on your Android phone (Android 7.0+, arm64) and open it to install. Updating to a newer release keeps your data.
 
 ## Getting started
 
