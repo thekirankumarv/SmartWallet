@@ -5,7 +5,7 @@
 # SmartWallet
 
 **An offline-first personal finance tracker for Android.**
-Log expenses in seconds, see where your money goes, stay within budget and track loans to the last EMI. All data stays on your phone.
+Log expenses in seconds by tapping or just speaking, see where your money goes, stay within budget and track loans to the last EMI. All data stays on your phone; voice entry is optional and, when used, sends only the recording plus your category and account names to Gemini.
 
 ![Expo SDK](https://img.shields.io/badge/Expo_SDK-58-000020?logo=expo)
 ![React Native](https://img.shields.io/badge/React_Native-0.88-61DAFB?logo=react&logoColor=black)
@@ -195,12 +195,6 @@ Date,Time,Type,Account,To Account,Category,Subcategory,Note,Amount
 - **Dates:** `YYYY-MM-DD` or `DD/MM/YYYY`.
 - **Matching:** accounts, categories and subcategories are matched by name (case and punctuation insensitive). Missing ones are created.
 - **Duplicates:** rows already in the app are skipped, so re-importing the same file is safe.
-
-## Roadmap
-
-- [ ] Recurring transactions (rent, subscriptions, EMIs)
-- [ ] Scheduled automatic backups to Google Drive
-- [ ] Home-screen widget for one-tap entry
 
 ## License
 

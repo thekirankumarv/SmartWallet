@@ -5,8 +5,14 @@ import type { Account, Category, Data, Tx } from './types';
 export type Draft = Omit<Tx, 'id'>;
 
 export function parse(raw: string): Data {
-  const d = JSON.parse(raw);
-  if (d?.v !== 1 || !Array.isArray(d.txs) || !Array.isArray(d.accounts) || !Array.isArray(d.cats)) throw new Error('Not a SmartWallet file');
+  let d;
+  try {
+    d = JSON.parse(raw);
+  } catch {
+    d = null;
+  }
+  if (d?.v !== 1 || !Array.isArray(d.txs) || !Array.isArray(d.accounts) || !Array.isArray(d.cats))
+    throw new Error('This isn’t a SmartWallet backup. Pick the .json file saved by Backup.');
   return d;
 }
 

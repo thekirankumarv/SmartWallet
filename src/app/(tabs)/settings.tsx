@@ -25,7 +25,12 @@ export default function Settings() {
     guard(async () => {
       const text = await pickText();
       if (text == null) return;
-      const data = readBackup(text);
+      let data;
+      try {
+        data = readBackup(text);
+      } catch (e) {
+        return notify('Can’t restore this file', e instanceof Error ? e.message : String(e));
+      }
       confirm(
         'Restore backup?',
         `This replaces ALL data on this phone with the backup (${data.txs.length} transactions). Current data will be lost.`,
