@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { Text, View } from 'react-native';
 import { initStore, useStore } from '../lib/store';
 import { loadApiKey } from '../lib/voice';
-import { C } from '../components/ui';
+import { C, DialogHost } from '../components/ui';
 
 const theme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: C.bg, card: C.bg, primary: C.accent, text: C.text, border: C.line } };
 
@@ -29,6 +29,7 @@ export default function Root() {
           <Text style={{ color: C.sub }}>Loading…</Text>
         </View>
       )}
+      <DialogHost />
     </ThemeProvider>
   );
 }

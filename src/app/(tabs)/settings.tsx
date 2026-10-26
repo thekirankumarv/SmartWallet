@@ -31,6 +31,7 @@ export default function Settings() {
         `This replaces ALL data on this phone with the backup (${data.txs.length} transactions). Current data will be lost.`,
         'Restore',
         () => store.replaceAll(data),
+        true,
       );
     });
 

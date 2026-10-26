@@ -6,12 +6,6 @@ const BASE = process.env.BASE_URL ?? 'http://localhost:8081';
 
 async function run(page) {
   const log = [];
-  const dialogs = [];
-  let acceptNext = true;
-  page.on('dialog', async (d) => {
-    dialogs.push(d.message().replace(/\n+/g, ' | '));
-    await (acceptNext ? d.accept() : d.dismiss());
-  });
   const wait = (ms = 350) => page.waitForTimeout(ms);
   const tap = async (t) => {
     await page.getByText(t, { exact: true }).last().click({ timeout: 5000 });
@@ -34,6 +28,11 @@ async function run(page) {
   const go = async (u, ms = 800) => {
     await page.goto(BASE + u);
     await wait(ms);
+  };
+  const dialog = async () => ((await page.getByTestId('dialog').count()) ? (await page.getByTestId('dialog').innerText()).replace(/\n+/g, ' | ') : '');
+  const answer = async (label) => {
+    await page.getByTestId('dialog').getByText(label, { exact: true }).click({ timeout: 5000 });
+    await wait(400);
   };
   const stored = () => page.evaluate(() => JSON.parse(localStorage.getItem('smartwallet.json')));
 
@@ -78,14 +77,12 @@ async function run(page) {
     await check('edit saved', has('-₹54'));
 
     await tap('Milk');
-    acceptNext = false;
-    dialogs.length = 0;
     await lab('Delete transaction');
-    await check('delete asks for confirmation', Promise.resolve(dialogs[0]?.startsWith('Delete this transaction?')));
-    await check('cancel keeps transaction', has('Edit transaction'));
-    acceptNext = true;
+    await check('delete asks for confirmation', (await dialog()).includes('Delete this transaction?'));
+    await answer('Cancel');
+    await check('cancel keeps transaction', (async () => (await has('Edit transaction')) && !(await dialog()))());
     await lab('Delete transaction');
-    await wait(500);
+    await answer('Delete');
     await check('confirm deletes transaction', not('-₹54'));
 
     await go('/tx');
@@ -131,14 +128,14 @@ async function run(page) {
     const tmp = accs.find((a) => a.name === 'Temp Wallet');
     const hdfc = accs.find((a) => a.name === 'HDFC');
     await go(`/account/edit?id=${hdfc.id}`, 600);
-    dialogs.length = 0;
     await tap('Delete account');
-    await check('account with transactions: blocked without delete prompt', Promise.resolve(dialogs.length === 1 && dialogs[0].includes('Hide it instead')));
+    const blocked = await dialog();
+    await check('account with transactions: blocked without delete prompt', blocked.includes('Hide it instead') && !blocked.includes('Delete |'));
+    await answer('OK');
     await go(`/account/edit?id=${tmp.id}`, 600);
-    dialogs.length = 0;
     await tap('Delete account');
-    await wait(400);
-    await check('empty account delete asks confirmation', Promise.resolve(dialogs[0]?.startsWith('Delete "Temp Wallet"?')));
+    await check('empty account delete asks confirmation', (await dialog()).includes('Delete "Temp Wallet"?'));
+    await answer('Delete');
     await check('empty account deleted', Promise.resolve(!(await stored()).accounts.some((a) => a.name === 'Temp Wallet')));
 
     await go('/account/edit', 600);
@@ -187,16 +184,15 @@ async function run(page) {
     await go('/categories', 600);
     await check('new category with subcategories', has('Pet Food, Vet'));
     await tap('Pets');
-    dialogs.length = 0;
     await lab('Delete Vet');
-    await check('subcategory delete asks confirmation', Promise.resolve(dialogs[0]?.includes('subcategory "Vet"')));
+    await check('subcategory delete asks confirmation', (await dialog()).includes('subcategory "Vet"'));
+    await answer('Delete');
     await tap('Save');
     await check('subcategory removed', (async () => (await has('Pet Food')) && (await not('Pet Food, Vet')))());
     await tap('Pets');
-    dialogs.length = 0;
     await tap('Delete category');
-    await wait(400);
-    await check('category delete asks confirmation', Promise.resolve(dialogs[0]?.startsWith('Delete category "Pets"?')));
+    await check('category delete asks confirmation', (await dialog()).includes('Delete category "Pets"?'));
+    await answer('Delete');
     await check('category deleted', not('Pets'));
 
     await go('/search', 600);
@@ -205,14 +201,14 @@ async function run(page) {
     await check('search finds salary', has('1 results'));
 
     await go('/');
-    dialogs.length = 0;
     const mic = await page.getByLabel('Hold to add by voice', { exact: true }).boundingBox();
     await page.mouse.move(mic.x + mic.width / 2, mic.y + mic.height / 2);
     await page.mouse.down();
     await wait(300);
     await page.mouse.up();
     await wait(800);
-    await check('mic without key offers setup', Promise.resolve(dialogs[0]?.startsWith('Set up voice entry')));
+    await check('mic without key offers setup', (await dialog()).includes('Set up voice entry'));
+    await answer('Set up');
     await check('setup opens voice settings', has('Open Google AI Studio'));
     await fill('AQ.…', 'sk-' + 'x'.repeat(40));
     await tap('Check & save');
@@ -236,10 +232,10 @@ async function run(page) {
     await go(`/voice?heard=${encodeURIComponent('milk 47, petrol 205')}&drafts=${encodeURIComponent(JSON.stringify(drafts))}`);
     await check('review shows what was heard', has('“milk 47, petrol 205”'));
     await check('review flags entry without category', (async () => (await has('Pick a category · tap to fix')) && (await has('Fix 1 entry to save')))());
-    dialogs.length = 0;
     await page.getByLabel('Remove entry', { exact: true }).last().click();
     await wait();
-    await check('removing an entry asks confirmation', Promise.resolve(dialogs[0]?.startsWith('Delete this entry?')));
+    await check('removing an entry asks confirmation', (await dialog()).includes('Delete this entry?'));
+    await answer('Delete');
     await tap('Save');
     await check('reviewed entry saved', Promise.resolve((await stored()).txs.some((t) => t.amt === 4700 && t.s === 'dairy-0' && t.a === cashId)));
 

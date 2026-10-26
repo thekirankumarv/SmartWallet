@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import type { ComponentProps, ReactNode } from 'react';
 import {
-  Alert,
+  Modal,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,6 +18,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { create } from 'zustand';
 import { fmt, parseYmd, ymd } from '../lib/money';
 import { catById, subName, useStore } from '../lib/store';
 import type { AccountType, Tx } from '../lib/types';
@@ -54,24 +55,72 @@ export const accTypeInfo = (t: AccountType): [label: string, icon: string] => {
 };
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
-export function notify(title: string, message?: string) {
-  if (Platform.OS === 'web') return window.alert(message ? `${title}\n\n${message}` : title);
-  Alert.alert(title, message);
+interface Dialog {
+  title: string;
+  message?: string;
+  action?: string;
+  danger?: boolean;
+  onYes?: () => void;
+}
+const useDialogs = create<{ queue: Dialog[] }>()(() => ({ queue: [] }));
+const show = (d: Dialog) => useDialogs.setState((st) => ({ queue: [...st.queue, d] }));
+
+export const notify = (title: string, message?: string) => show({ title, message });
+
+export const confirm = (title: string, message: string | undefined, action: string, onYes: () => void, danger = false) =>
+  show({ title, message, action, onYes, danger });
+
+export function DialogHost() {
+  const d = useDialogs((st) => st.queue[0]);
+  const close = (yes: boolean) => {
+    useDialogs.setState((st) => ({ queue: st.queue.slice(1) }));
+    if (yes) d?.onYes?.();
+  };
+  if (!d) return null;
+  const tone = d.danger ? C.red : C.accent;
+  return (
+    <Modal transparent visible animationType="fade" statusBarTranslucent onRequestClose={() => close(false)}>
+      <Pressable style={s.backdrop} onPress={() => close(false)}>
+        <Pressable style={s.dialog} testID="dialog" accessibilityRole="alert">
+          <View style={[s.dialogIcon, { backgroundColor: tone + '22' }]}>
+            <Ionicons
+              name={d.action === 'Delete' ? 'trash-outline' : d.danger ? 'warning-outline' : d.action ? 'help-circle-outline' : 'information-circle-outline'}
+              size={24}
+              color={tone}
+            />
+          </View>
+          <Text style={s.dialogTitle}>{d.title}</Text>
+          {!!d.message && <Text style={s.dialogText}>{d.message}</Text>}
+          <View style={[s.row, { gap: 10, marginTop: 8, alignSelf: 'stretch' }]}>
+            {d.action ? (
+              <>
+                <DialogBtn label="Cancel" onPress={() => close(false)} />
+                <DialogBtn label={d.action} color={tone} onPress={() => close(true)} />
+              </>
+            ) : (
+              <DialogBtn label="OK" color={C.accent} onPress={() => close(false)} />
+            )}
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
 }
 
-export function confirm(title: string, message: string | undefined, action: string, onYes: () => void) {
-  if (Platform.OS === 'web') {
-    if (window.confirm(message ? `${title}\n\n${message}` : title)) onYes();
-    return;
-  }
-  Alert.alert(title, message, [
-    { text: 'Cancel', style: 'cancel' },
-    { text: action, style: 'destructive', onPress: onYes },
-  ]);
+function DialogBtn({ label, color, onPress }: { label: string; color?: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={() => (tap(), onPress())}
+      accessibilityRole="button"
+      style={({ pressed }) => [s.dialogBtn, { backgroundColor: color ?? C.card2, opacity: pressed ? 0.75 : 1 }]}
+    >
+      <Text style={[s.btnText, { color: color ? '#0A0A0F' : C.text }]}>{label}</Text>
+    </Pressable>
+  );
 }
 
 export const confirmDelete = (what: string, detail: string | undefined, onYes: () => void) =>
-  confirm(`Delete ${what}?`, detail ?? 'This can’t be undone.', 'Delete', onYes);
+  confirm(`Delete ${what}?`, detail ?? 'This can’t be undone.', 'Delete', onYes, true);
 
 export const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 export const tap = () => Platform.OS !== 'web' && Haptics.selectionAsync();
@@ -309,6 +358,22 @@ export const s = StyleSheet.create({
   segText: { color: C.sub, fontWeight: '700', fontSize: 14 },
   btn: { height: 52, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 18 },
   btnText: { fontSize: 16, fontWeight: '700' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  dialog: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: C.card,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: C.line,
+    padding: 22,
+    alignItems: 'center',
+    gap: 8,
+  },
+  dialogIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  dialogTitle: { color: C.text, fontSize: 18, fontWeight: '800', textAlign: 'center' },
+  dialogText: { color: C.sub, fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  dialogBtn: { flex: 1, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   label: { color: C.sub, fontSize: 13, fontWeight: '600' },
   input: { backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 14, height: 50, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.line },
   rowItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 4, borderRadius: 14 },
