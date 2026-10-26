@@ -1,4 +1,5 @@
-export type AccountType = 'bank' | 'cash' | 'wallet' | 'card' | 'loan';
+// built-in: bank, cash, wallet, card, loan; any other name is a user-defined asset type
+export type AccountType = string;
 export type TxType = 'e' | 'i' | 'x'; // expense, income, transfer
 export type CatKind = 'e' | 'i';
 

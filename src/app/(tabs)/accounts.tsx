@@ -3,16 +3,17 @@ import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { fmt } from '../../lib/money';
 import { balances, useStore } from '../../lib/store';
-import { ACC_TYPES, Btn, Bubble, Empty, C, Card, Header, IconBtn, Row, s, Screen, Section } from '../../components/ui';
+import { ACC_TYPES, accTypeInfo, Btn, Bubble, Empty, C, Card, Header, IconBtn, isDebt, Row, s, Screen, Section } from '../../components/ui';
 
 export default function Accounts() {
   const { accounts, txs } = useStore();
   const [showHidden, setShowHidden] = useState(false);
   const bal = useMemo(() => balances({ accounts, txs }), [accounts, txs]);
   const visible = accounts.filter((a) => a.type !== 'loan' && (showHidden || !a.hidden));
-  const assets = accounts.filter((a) => a.type !== 'loan' && a.type !== 'card').reduce((x, a) => x + bal[a.id], 0);
-  const debt = accounts.filter((a) => a.type === 'loan' || a.type === 'card').reduce((x, a) => x + Math.min(0, bal[a.id]), 0);
+  const assets = accounts.filter((a) => !isDebt(a.type)).reduce((x, a) => x + bal[a.id], 0);
+  const debt = accounts.filter((a) => isDebt(a.type)).reduce((x, a) => x + Math.min(0, bal[a.id]), 0);
   const hiddenCount = accounts.filter((a) => a.hidden && a.type !== 'loan').length;
+  const types = [...new Set([...ACC_TYPES.map(([t]) => t), ...visible.map((a) => a.type)])].filter((t) => t !== 'loan');
 
   return (
     <Screen scroll>
@@ -40,13 +41,15 @@ export default function Accounts() {
           <Btn label="Add account" icon="add" onPress={() => router.push('/account/edit')} />
         </View>
       )}
-      {ACC_TYPES.filter(([t]) => t !== 'loan').map(([type, label, icon]) => {
+      {types.map((type) => {
         const list = visible.filter((a) => a.type === type);
         if (!list.length) return null;
-        const sum = list.reduce((x, a) => x + bal[a.id], 0);
+        const [label, icon] = accTypeInfo(type);
+        const debtSign = isDebt(type) ? -1 : 1;
+        const sum = list.reduce((x, a) => x + bal[a.id], 0) * debtSign;
         return (
           <View key={type}>
-            <Section title={label} right={<Text style={s.muted}>{fmt(sum, { decimals: false })}</Text>} />
+            <Section title={label} right={<Text style={s.muted}>{(debtSign < 0 ? 'Owed ' : '') + fmt(sum, { decimals: false })}</Text>} />
             <Card style={{ paddingVertical: 6, paddingHorizontal: 10 }}>
               {list.map((a) => (
                 <Row
@@ -54,8 +57,8 @@ export default function Accounts() {
                   onPress={() => router.push(`/account/${a.id}`)}
                   icon={<Bubble emoji={icon} />}
                   title={a.name + (a.hidden ? ' (hidden)' : '')}
-                  sub={type === 'loan' && a.emi ? `EMI ${fmt(a.emi, { decimals: false })} · ${a.rate ?? 0}%` : undefined}
-                  right={<Text style={[s.amt, { color: bal[a.id] < 0 ? C.red : C.text }]}>{fmt(bal[a.id])}</Text>}
+                  sub={debtSign < 0 && bal[a.id] ? (bal[a.id] < 0 ? 'Owed' : 'Credit balance') : undefined}
+                  right={<Text style={[s.amt, { color: bal[a.id] * debtSign < 0 ? C.red : C.text }]}>{fmt(bal[a.id] * debtSign)}</Text>}
                 />
               ))}
             </Card>

@@ -3,7 +3,20 @@ import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import type { ComponentProps, ReactNode } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type StyleProp,
+  type TextInputProps,
+  type ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fmt, parseYmd, ymd } from '../lib/money';
 import { catById, subName, useStore } from '../lib/store';
@@ -34,6 +47,11 @@ export const ACC_TYPES: [AccountType, string, string][] = [
   ['card', 'Credit Card', '💳'],
   ['loan', 'Loan', '📉'],
 ];
+export const isDebt = (t: AccountType) => t === 'loan' || t === 'card';
+export const accTypeInfo = (t: AccountType): [label: string, icon: string] => {
+  const known = ACC_TYPES.find(([k]) => k === t);
+  return known ? [known[1], known[2]] : [t, '🗂️'];
+};
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 export function notify(title: string, message?: string) {
@@ -63,9 +81,11 @@ export function Screen({ children, scroll, pad = true }: { children: ReactNode; 
   const style = { paddingTop: ins.top + 8, paddingHorizontal: pad ? 16 : 0 };
   if (scroll)
     return (
-      <ScrollView style={s.fill} contentContainerStyle={[style, { paddingBottom: ins.bottom + 120 }]} keyboardShouldPersistTaps="handled">
-        {children}
-      </ScrollView>
+      <KeyboardAvoidingView style={s.fill} behavior="padding">
+        <ScrollView style={s.fill} contentContainerStyle={[style, { paddingBottom: ins.bottom + 120 }]} keyboardShouldPersistTaps="handled">
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
   return <View style={[s.fill, style]}>{children}</View>;
 }

@@ -1,6 +1,6 @@
 {
   "name": "smartwallet",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Offline-first personal finance tracker for Android: expenses, budgets, accounts and loans, stored locally.",
   "author": "Kiran Kumar V",
   "license": "MIT",

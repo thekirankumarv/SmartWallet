@@ -5,9 +5,12 @@ import { calc, hm, today, toPaise, uid } from '../../lib/money';
 import { balances, useStore } from '../../lib/store';
 import { ADJ_E, ADJ_I } from '../../lib/seed';
 import type { Account, AccountType } from '../../lib/types';
-import { ACC_TYPES, Btn, C, Chip, Field, Header, s, Screen, goBack, confirmDelete, notify } from '../../components/ui';
+import { ACC_TYPES, Btn, C, Chip, Field, Header, isDebt, s, Screen, goBack, confirmDelete, notify } from '../../components/ui';
 
-const debtType = (t: AccountType) => t === 'loan' || t === 'card';
+const resolveType = (name: string, customTypes: string[]): AccountType => {
+  const n = name.toLowerCase();
+  return ACC_TYPES.find(([t, l]) => t === n || l.toLowerCase() === n)?.[0] ?? customTypes.find((t) => t.toLowerCase() === n) ?? name;
+};
 
 export default function AccountEdit() {
   const { id, type: initialType } = useLocalSearchParams<{ id?: string; type?: AccountType }>();
@@ -16,8 +19,11 @@ export default function AccountEdit() {
   const curBal = a ? balances(store)[a.id] : 0;
 
   const [name, setName] = useState(a?.name ?? '');
-  const [type, setType] = useState<AccountType>(a?.type ?? initialType ?? 'bank');
-  const initialBalance = a ? String((debtType(a.type) ? -curBal : curBal) / 100) : '';
+  const [picked, setPicked] = useState<AccountType>(a?.type ?? initialType ?? 'bank');
+  const [custom, setCustom] = useState<string | null>(null);
+  const customTypes = [...new Set(store.accounts.map((x) => x.type).filter((t) => !ACC_TYPES.some(([k]) => k === t)))];
+  const type = custom === null ? picked : resolveType(custom.trim(), customTypes);
+  const initialBalance = a ? String((isDebt(a.type) ? -curBal : curBal) / 100) : '';
   const [balance, setBalance] = useState(initialBalance);
   const [rate, setRate] = useState(a?.rate ? String(a.rate) : '');
   const [emi, setEmi] = useState(a?.emi ? String(a.emi / 100) : '');
@@ -25,9 +31,10 @@ export default function AccountEdit() {
 
   const save = () => {
     if (!name.trim()) return notify('Enter a name');
+    if (!type) return notify('Enter a type name');
     const n = balance.trim() ? calc(balance) : 0;
     if (isNaN(n)) return notify('Invalid balance');
-    const target = debtType(type) ? -toPaise(n) : toPaise(n);
+    const target = isDebt(type) ? -toPaise(n) : toPaise(n);
     const r = parseFloat(rate) || 0;
     const e = toPaise(parseFloat(emi) || 0);
     const next: Account = {
@@ -65,12 +72,17 @@ export default function AccountEdit() {
           <Text style={s.label}>Type</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {ACC_TYPES.map(([t, l, i]) => (
-              <Chip key={t} label={`${i} ${l}`} active={type === t} onPress={() => setType(t)} />
+              <Chip key={t} label={`${i} ${l}`} active={custom === null && picked === t} onPress={() => (setPicked(t), setCustom(null))} />
             ))}
+            {customTypes.map((t) => (
+              <Chip key={t} label={`🗂️ ${t}`} active={custom === null && picked === t} onPress={() => (setPicked(t), setCustom(null))} />
+            ))}
+            <Chip label="+ Custom" active={custom !== null} onPress={() => setCustom('')} />
           </View>
+          {custom !== null && <Field label="Custom type" value={custom} onChangeText={setCustom} placeholder="e.g. Investments, Savings Jar" autoFocus />}
         </View>
         <Field
-          label={debtType(type) ? 'Amount owed (₹)' : a ? 'Current balance (₹)' : 'Opening balance (₹)'}
+          label={isDebt(type) ? 'Amount owed (₹)' : a ? 'Current balance (₹)' : 'Opening balance (₹)'}
           value={balance}
           onChangeText={setBalance}
           keyboardType="decimal-pad"

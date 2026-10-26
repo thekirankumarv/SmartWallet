@@ -141,6 +141,25 @@ async function run(page) {
     await check('empty account delete asks confirmation', Promise.resolve(dialogs[0]?.startsWith('Delete "Temp Wallet"?')));
     await check('empty account deleted', Promise.resolve(!(await stored()).accounts.some((a) => a.name === 'Temp Wallet')));
 
+    await go('/account/edit', 600);
+    await fill('e.g. HDFC Savings, Paytm, Cash', 'Visa');
+    await tap('💳 Credit Card');
+    await fill('0', '2500');
+    await tap('Save');
+    await go('/accounts');
+    await check('card owed shown as positive amount', (async () => (await has('Owed ₹2,500')) && (await not('-₹2,500')))());
+
+    await go('/account/edit', 600);
+    await fill('e.g. HDFC Savings, Paytm, Cash', 'Mutual Funds');
+    await tap('+ Custom');
+    await fill('e.g. Investments, Savings Jar', 'Investments');
+    await fill('0', '7000');
+    await tap('Save');
+    await go('/accounts');
+    await check('custom account type groups accounts', (async () => (await has('Investments')) && (await has('₹7,000')))());
+    await go('/account/edit', 600);
+    await check('custom type offered for next account', has('🗂️ Investments'));
+
     await go('/category/new?kind=e', 600);
     await fill('e.g. Dairy', 'Pets');
     await fill('No budget', '500');

@@ -4,7 +4,7 @@ import { FlatList, Text, View } from 'react-native';
 import { addMonths, fmt, monthLabel, monthOf, monthsLeft, today } from '../../lib/money';
 import { balances, useStore } from '../../lib/store';
 import { INTEREST_SUB } from '../../lib/seed';
-import { ACC_TYPES, Btn, C, Card, Empty, Header, IconBtn, s, Screen, TxRow } from '../../components/ui';
+import { accTypeInfo, Btn, C, Card, Empty, Header, IconBtn, isDebt, s, Screen, TxRow } from '../../components/ui';
 
 export default function AccountDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -15,13 +15,14 @@ export default function AccountDetail() {
   if (!a) return null;
 
   const isLoan = a.type === 'loan';
+  const debt = isDebt(a.type);
   const owed = -bal;
   const left = isLoan ? monthsLeft(owed, a.emi ?? 0, a.rate ?? 0) : 0;
   const year = today().slice(0, 4);
   const interestYear = list.filter((t) => t.s === INTEREST_SUB && t.d.startsWith(year)).reduce((x, t) => x + t.amt, 0);
   const paidYear = list.filter((t) => t.t === 'x' && t.to === a.id && t.d.startsWith(year)).reduce((x, t) => x + t.amt, 0);
   const payFrom = lastAcc && lastAcc !== a.id ? lastAcc : accounts.find((x) => x.type === 'bank' && x.id !== a.id)?.id;
-  const icon = ACC_TYPES.find(([t]) => t === a.type)?.[2];
+  const icon = accTypeInfo(a.type)[1];
 
   return (
     <Screen>
@@ -36,9 +37,9 @@ export default function AccountDetail() {
           <View style={{ gap: 12, marginBottom: 12 }}>
             <Card style={{ gap: 4 }}>
               <Text style={s.muted}>
-                {icon} {isLoan ? 'Outstanding' : 'Balance'}
+                {icon} {isLoan ? 'Outstanding' : debt ? (bal > 0 ? 'Credit balance' : 'Owed') : 'Balance'}
               </Text>
-              <Text style={[s.big, { color: isLoan ? C.red : bal < 0 ? C.red : C.text }]}>{fmt(isLoan ? owed : bal)}</Text>
+              <Text style={[s.big, { color: isLoan ? C.red : !debt && bal < 0 ? C.red : C.text }]}>{fmt(debt ? Math.abs(bal) : bal)}</Text>
             </Card>
             {isLoan && (
               <Card style={{ gap: 10 }}>

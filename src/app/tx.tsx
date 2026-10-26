@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addDays, calc, dayLabel, fmt, hm, today, toPaise } from '../lib/money';
 import { useStore, type Draft } from '../lib/store';
@@ -42,6 +42,10 @@ export default function TxScreen() {
   const [sub, setSub] = useState(editing?.s);
   const [note, setNote] = useState(editing?.n ?? '');
   const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const l = Keyboard.addListener('keyboardDidHide', () => setTyping(false));
+    return () => l.remove();
+  }, []);
   const [pickCat, setPickCat] = useState(!editing);
 
   const accounts = store.accounts.filter((x) => (!x.hidden || x.id === a || x.id === to) && (t === 'x' || x.type !== 'loan' || x.id === a));
@@ -115,7 +119,7 @@ export default function TxScreen() {
     );
 
   return (
-    <View style={[s.fill, { paddingTop: ins.top + 8 }]}>
+    <KeyboardAvoidingView style={[s.fill, { paddingTop: ins.top + 8 }]} behavior="padding">
       <View style={[s.header, { paddingHorizontal: 16 }]}>
         <IconBtn name="close" onPress={() => goBack()} />
         <Text style={[s.h1, { fontSize: 20, textAlign: 'center' }]}>{editing ? 'Edit' : 'New'} transaction</Text>
@@ -267,7 +271,7 @@ export default function TxScreen() {
           </View>
         </View>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
