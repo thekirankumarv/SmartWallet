@@ -23,7 +23,8 @@ export default function AccountEdit() {
   const [custom, setCustom] = useState<string | null>(null);
   const customTypes = [...new Set(store.accounts.map((x) => x.type).filter((t) => !ACC_TYPES.some(([k]) => k === t)))];
   const type = custom === null ? picked : resolveType(custom.trim(), customTypes);
-  const initialBalance = a ? String((isDebt(a.type) ? -curBal : curBal) / 100) : '';
+  const initialBalance = a && curBal ? String((isDebt(a.type) ? -curBal : curBal) / 100) : '';
+  const hasTxs = !!a && store.txs.some((t) => t.a === a.id || t.to === a.id);
   const [balance, setBalance] = useState(initialBalance);
   const [rate, setRate] = useState(a?.rate ? String(a.rate) : '');
   const [emi, setEmi] = useState(a?.emi ? String(a.emi / 100) : '');
@@ -44,8 +45,10 @@ export default function AccountEdit() {
       ...(type === 'loan' ? { rate: r, emi: e } : { rate: undefined, emi: undefined }),
       hidden: hidden || undefined,
     };
+    const changed = !!a && balance.trim() !== initialBalance && target !== curBal;
+    if (changed && !hasTxs) next.open = target;
     store.saveAccount(next);
-    if (a && balance.trim() !== initialBalance && target !== curBal) {
+    if (changed && hasTxs) {
       const diff = target - curBal;
       store.addTxs([
         { t: diff > 0 ? 'i' : 'e', amt: Math.abs(diff), d: today(), tm: hm(new Date()), a: a.id, c: diff > 0 ? ADJ_I : ADJ_E, n: 'Balance adjusted' },
@@ -55,7 +58,7 @@ export default function AccountEdit() {
   };
 
   const remove = () =>
-    store.txs.some((t) => t.a === a!.id || t.to === a!.id)
+    hasTxs
       ? notify('Can’t delete', 'This account has transactions. Hide it instead.')
       : confirmDelete(`"${a!.name}"`, undefined, () => {
           const err = store.deleteAccount(a!.id);
@@ -86,6 +89,7 @@ export default function AccountEdit() {
           value={balance}
           onChangeText={setBalance}
           keyboardType="decimal-pad"
+          selectTextOnFocus
           placeholder="0"
         />
         {type === 'loan' && (

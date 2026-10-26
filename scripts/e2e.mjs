@@ -160,6 +160,20 @@ async function run(page) {
     await go('/account/edit', 600);
     await check('custom type offered for next account', has('🗂️ Investments'));
 
+    await fill('e.g. HDFC Savings, Paytm, Cash', 'Spare');
+    await tap('Save');
+    const spare = (await stored()).accounts.find((a) => a.name === 'Spare');
+    await go(`/account/edit?id=${spare.id}`, 600);
+    await check('zero balance field starts empty', Promise.resolve((await page.getByPlaceholder('0', { exact: true }).last().inputValue()) === ''));
+    const txCount = (await stored()).txs.length;
+    await fill('0', '3000');
+    await tap('Save');
+    const after = await stored();
+    await check(
+      'balance set on account without history is not an adjustment',
+      Promise.resolve(after.txs.length === txCount && after.accounts.find((a) => a.id === spare.id).open === 300000),
+    );
+
     await go('/category/new?kind=e', 600);
     await fill('e.g. Dairy', 'Pets');
     await fill('No budget', '500');
