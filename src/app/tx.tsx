@@ -28,7 +28,17 @@ function nextExpr(expr: string, k: string) {
 
 export default function TxScreen() {
   const ins = useSafeAreaInsets();
-  const p = useLocalSearchParams<{ id?: string; date?: string; type?: TxType; to?: string; amt?: string; from?: string }>();
+  const p = useLocalSearchParams<{
+    id?: string;
+    date?: string;
+    type?: TxType;
+    to?: string;
+    amt?: string;
+    from?: string;
+    c?: string;
+    s?: string;
+    note?: string;
+  }>();
   const store = useStore();
   const editing = p.id ? store.txs.find((t) => t.id === p.id) : undefined;
 
@@ -38,15 +48,15 @@ export default function TxScreen() {
   const usable = store.accounts.filter((x) => !x.hidden && x.type !== 'loan');
   const [a, setA] = useState(editing?.a ?? p.from ?? usable.find((x) => x.id === store.lastAcc)?.id ?? usable[0]?.id);
   const [to, setTo] = useState(editing?.to ?? p.to);
-  const [c, setC] = useState(editing?.c);
-  const [sub, setSub] = useState(editing?.s);
-  const [note, setNote] = useState(editing?.n ?? '');
+  const [c, setC] = useState(editing?.c ?? p.c);
+  const [sub, setSub] = useState(editing?.s ?? p.s);
+  const [note, setNote] = useState(editing?.n ?? p.note ?? '');
   const [typing, setTyping] = useState(false);
   useEffect(() => {
     const l = Keyboard.addListener('keyboardDidHide', () => setTyping(false));
     return () => l.remove();
   }, []);
-  const [pickCat, setPickCat] = useState(!editing);
+  const [pickCat, setPickCat] = useState(!editing && !p.c);
 
   const accounts = store.accounts.filter((x) => (!x.hidden || x.id === a || x.id === to) && (t === 'x' || x.type !== 'loan' || x.id === a));
   const cats = useMemo(() => store.cats.filter((x) => x.kind === t && (!x.hidden || x.id === c) && x.id !== ADJ_E && x.id !== ADJ_I), [store.cats, t, c]);

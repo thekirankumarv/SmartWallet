@@ -39,6 +39,13 @@ Log expenses in seconds, see where your money goes, stay within budget and track
 - Notes, edit, and delete with confirmation
 - Month-by-month timeline grouped by day with daily totals
 
+### Voice entry
+- Hold the mic, say *"milk 47, petrol 205 yesterday, salary 60000 to savings"*, release
+- Google Gemini turns speech into entries with the right category, subcategory, account and date ("yesterday", "last Friday", "on the 5th")
+- Review screen before anything is saved: fix or remove entries, then save all at once
+- Uses your own free Gemini API key, set up in **Settings → Voice entry**. The key is checked with Google before it's saved and stored encrypted on the phone, never in backups
+- Clear messages for a wrong or expired key, used-up daily limit, no internet and busy servers
+
 ### Stats & budgets
 - Monthly and yearly views with income, expense and savings
 - Donut chart by category; tap a category to see its subcategory split
@@ -46,7 +53,8 @@ Log expenses in seconds, see where your money goes, stay within budget and track
 - Month-by-month income vs expense bars for the year
 
 ### Accounts
-- Bank accounts, cash, wallets and credit cards, all created by the user
+- Bank accounts, cash, wallets, credit cards and your own custom types, all created by the user
+- Credit card dues shown as the amount owed
 - Live balances, net worth, assets vs liabilities
 - Transfers between accounts; balance corrections are recorded as adjustments, never silent edits
 - Hide accounts you no longer use without losing history
@@ -79,6 +87,7 @@ Log expenses in seconds, see where your money goes, stay within budget and track
 | Charts | `react-native-svg` (hand-built donut and bar charts) |
 | Files | `expo-sharing`, `expo-document-picker` |
 | Native UI | `@react-native-community/datetimepicker`, `expo-haptics` |
+| Voice | `expo-audio` (recording), Gemini API (`generateContent` with audio input and JSON schema output), `expo-secure-store` (API key) |
 | Testing | Node assert + `tsx` (unit), Playwright (end-to-end on the web build) |
 | Tooling | ESLint (`eslint-config-expo`), Prettier |
 
@@ -105,9 +114,15 @@ src/
 │   ├── category/           Category editor
 │   ├── categories.tsx      Category list
 │   ├── search.tsx          Search and filters
-│   └── tx.tsx              Add / edit transaction (modal)
-├── components/ui.tsx       Theme tokens and shared UI primitives
+│   ├── tx.tsx              Add / edit transaction (modal)
+│   ├── voice.tsx           Review entries from voice
+│   └── voice-settings.tsx  Gemini API key setup
+├── components/
+│   ├── ui.tsx              Theme tokens and shared UI primitives
+│   └── VoiceButton.tsx     Hold-to-talk recorder
 └── lib/
+    ├── ai.ts               Gemini request, reply parsing, key checks, error messages
+    ├── voice.ts            API key storage, audio file reading
     ├── ledger.ts           Validation, balances, cash flows, loan interest, CRUD
     ├── store.ts            Zustand store + file persistence
     ├── csv.ts              CSV parse / export / import
@@ -147,7 +162,7 @@ The release build targets `arm64-v8a` with R8 minification and resource shrinkin
 ## Testing
 
 ```bash
-npm test           # unit tests: calculator, formatting, dates, CSV, ledger, loan interest
+npm test           # unit tests: calculator, formatting, dates, CSV, ledger, loan interest, voice parsing and API errors
 npm run e2e        # UI flow test (start `npm run web` first; run `npx playwright install chromium` once)
 npm run typecheck
 npm run lint
@@ -162,6 +177,7 @@ The end-to-end suite starts from a fresh install and walks through:
 - the guards that stop deleting accounts and categories still in use
 - category and subcategory management
 - search
+- voice entry setup (key format and rejected-key messages) and the review screen
 - data surviving a reload
 
 ## CSV format
@@ -182,8 +198,6 @@ Date,Time,Type,Account,To Account,Category,Subcategory,Note,Amount
 
 ## Roadmap
 
-- [ ] Quick entry by text or voice ("milk 56, petrol 250 yesterday"), with a confirmation step before saving
-  - Optional cloud LLM (Gemini / Claude / OpenAI with your own key) or an on-device model
 - [ ] Recurring transactions (rent, subscriptions, EMIs)
 - [ ] Scheduled automatic backups to Google Drive
 - [ ] Home-screen widget for one-tap entry

@@ -4,6 +4,7 @@ import { Platform, Text, View } from 'react-native';
 import { importCsv } from '../../lib/csv';
 import { backupJson, exportCsv, pickData, pickText, readBackup } from '../../lib/io';
 import { useStore } from '../../lib/store';
+import { useApiKey } from '../../lib/voice';
 import { Bubble, C, Card, Header, Row, s, Screen, Section, type IconName, confirm, notify } from '../../components/ui';
 
 const guard = async (fn: () => Promise<void>) => {
@@ -18,6 +19,7 @@ const guard = async (fn: () => Promise<void>) => {
 export default function Settings() {
   const store = useStore();
   const size = JSON.stringify(pickData(store)).length;
+  const apiKey = useApiKey((st) => st.key);
 
   const restore = () =>
     guard(async () => {
@@ -67,6 +69,7 @@ export default function Settings() {
       <Card style={{ paddingVertical: 6, paddingHorizontal: 10 }}>
         {item('pricetags', C.accent, 'Categories & budgets', 'Add, rename, hide, set monthly budget', () => router.push('/categories'))}
         {item('wallet', C.blue, 'Accounts', 'Banks, cash, wallets, cards, loans', () => router.push('/accounts'))}
+        {item('mic', C.red, 'Voice entry', apiKey ? 'On · Gemini' : 'Set up with a free Gemini key', () => router.push('/voice-settings'))}
       </Card>
 
       <Section title="Backup" />

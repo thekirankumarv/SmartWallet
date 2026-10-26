@@ -190,6 +190,45 @@ async function run(page) {
     await wait(400);
     await check('search finds salary', has('1 results'));
 
+    await go('/');
+    dialogs.length = 0;
+    const mic = await page.getByLabel('Hold to add by voice', { exact: true }).boundingBox();
+    await page.mouse.move(mic.x + mic.width / 2, mic.y + mic.height / 2);
+    await page.mouse.down();
+    await wait(300);
+    await page.mouse.up();
+    await wait(800);
+    await check('mic without key offers setup', Promise.resolve(dialogs[0]?.startsWith('Set up voice entry')));
+    await check('setup opens voice settings', has('Open Google AI Studio'));
+    await fill('AQ.…', 'sk-' + 'x'.repeat(40));
+    await tap('Check & save');
+    await check('wrong key format explained', has('doesn’t look like a Gemini API key'));
+    await fill('AQ.…', 'AQ.Ab8RNfake' + 'a'.repeat(40));
+    await tap('Check & save');
+    await page.waitForFunction(() => document.body.innerText.includes('Invalid API key'), null, { timeout: 15000 }).catch(() => {});
+    await check('key rejected by Google explained', has('Invalid API key'));
+    await check(
+      'rejected key not saved',
+      page.evaluate(() => localStorage.getItem('gemini_api_key') === null),
+    );
+
+    const cashId = (await stored()).accounts.find((a) => a.name === 'Cash').id;
+    const now = new Date();
+    const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const drafts = [
+      { t: 'e', amt: 4700, d: ymd, a: cashId, c: 'dairy', s: 'dairy-0' },
+      { t: 'e', amt: 20500, d: ymd, a: cashId },
+    ];
+    await go(`/voice?heard=${encodeURIComponent('milk 47, petrol 205')}&drafts=${encodeURIComponent(JSON.stringify(drafts))}`);
+    await check('review shows what was heard', has('“milk 47, petrol 205”'));
+    await check('review flags entry without category', (async () => (await has('Pick a category · tap to fix')) && (await has('Fix 1 entry to save')))());
+    dialogs.length = 0;
+    await page.getByLabel('Remove entry', { exact: true }).last().click();
+    await wait();
+    await check('removing an entry asks confirmation', Promise.resolve(dialogs[0]?.startsWith('Delete this entry?')));
+    await tap('Save');
+    await check('reviewed entry saved', Promise.resolve((await stored()).txs.some((t) => t.amt === 4700 && t.s === 'dairy-0' && t.a === cashId)));
+
     await go('/accounts', 1000);
     await check('data persists after reload (HDFC paid EMI)', has('₹42,000'));
   } catch (e) {

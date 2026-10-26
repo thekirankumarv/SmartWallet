@@ -7,6 +7,7 @@ import { addMonths, dayLabel, fmt, lastDayOf, monthLabel, monthOf, today } from 
 import { flows, useStore } from '../../lib/store';
 import type { Tx } from '../../lib/types';
 import { Bar, C, Card, Empty, IconBtn, s, tap, TxRow } from '../../components/ui';
+import { VoiceButton } from '../../components/VoiceButton';
 
 export default function Home() {
   const ins = useSafeAreaInsets();
@@ -40,7 +41,7 @@ export default function Home() {
         sections={sections}
         keyExtractor={(t) => t.id}
         stickySectionHeadersEnabled={false}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 170 }}
         ListHeaderComponent={
           <View>
             <View style={s.header}>
@@ -111,6 +112,7 @@ export default function Home() {
       >
         <Ionicons name="add" size={32} color="#0A0A0F" />
       </Pressable>
+      <VoiceButton bottom={94} />
     </View>
   );
 }

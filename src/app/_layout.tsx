@@ -4,6 +4,7 @@ import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 import { Text, View } from 'react-native';
 import { initStore, useStore } from '../lib/store';
+import { loadApiKey } from '../lib/voice';
 import { C } from '../components/ui';
 
 const theme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: C.bg, card: C.bg, primary: C.accent, text: C.text, border: C.line } };
@@ -13,6 +14,7 @@ export default function Root() {
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(C.bg);
     initStore();
+    loadApiKey().catch(() => {});
   }, []);
   return (
     <ThemeProvider value={theme}>

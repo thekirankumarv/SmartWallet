@@ -2,7 +2,7 @@
   "expo": {
     "name": "SmartWallet",
     "slug": "smartwallet",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -49,7 +49,15 @@
             "useLegacyPackaging": true
           }
         }
-      ]
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "SmartWallet uses the microphone when you hold the mic button to add entries by voice.",
+          "enableBackgroundPlayback": false
+        }
+      ],
+      "expo-secure-store"
     ],
     "scheme": "smartwallet",
     "backgroundColor": "#0A0A0F"
