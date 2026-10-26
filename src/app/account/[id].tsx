@@ -49,8 +49,8 @@ export default function AccountDetail() {
                   label="Paid off in"
                   value={owed <= 0 ? 'Closed 🎉' : left === Infinity ? 'EMI too low' : `${left} months · ${monthLabel(addMonths(monthOf(today()), left))}`}
                 />
-                <Stat label={`Paid in ${year}`} value={fmt(paidYear, { decimals: false })} />
-                <Stat label={`Interest in ${year}`} value={fmt(interestYear, { decimals: false })} />
+                <Stat label={`Paid in ${year}`} value={fmt(paidYear)} />
+                <Stat label={`Interest in ${year}`} value={fmt(interestYear)} />
                 <Text style={s.small}>Interest is added automatically at the end of every month on the outstanding amount.</Text>
               </Card>
             )}

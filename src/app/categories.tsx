@@ -25,7 +25,7 @@ export default function Categories() {
         onChange={setKind}
         colors={{ e: C.red, i: C.green }}
       />
-      {kind === 'e' && total > 0 && <Text style={[s.muted, { marginTop: 14 }]}>Total monthly budget: {fmt(total, { decimals: false })}</Text>}
+      {kind === 'e' && total > 0 && <Text style={[s.muted, { marginTop: 14 }]}>Total monthly budget: {fmt(total)}</Text>}
       <Card style={{ paddingVertical: 6, paddingHorizontal: 10, marginTop: 14 }}>
         {list.map((c) => (
           <View key={c.id} style={{ opacity: c.hidden ? 0.45 : 1 }}>
@@ -41,7 +41,7 @@ export default function Categories() {
               }
               right={
                 <View style={[s.row, { gap: 6 }]}>
-                  {!!c.budget && <Text style={[s.small, { marginTop: 0 }]}>{fmt(c.budget, { decimals: false })}</Text>}
+                  {!!c.budget && <Text style={[s.small, { marginTop: 0 }]}>{fmt(c.budget)}</Text>}
                   <Ionicons name="chevron-forward" size={18} color={C.dim} />
                 </View>
               }

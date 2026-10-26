@@ -163,13 +163,15 @@ async function run(page) {
     await go(`/account/edit?id=${spare.id}`, 600);
     await check('zero balance field starts empty', Promise.resolve((await page.getByPlaceholder('0', { exact: true }).last().inputValue()) === ''));
     const txCount = (await stored()).txs.length;
-    await fill('0', '3000');
+    await fill('0', '3000.87');
     await tap('Save');
     const after = await stored();
     await check(
       'balance set on account without history is not an adjustment',
-      Promise.resolve(after.txs.length === txCount && after.accounts.find((a) => a.id === spare.id).open === 300000),
+      Promise.resolve(after.txs.length === txCount && after.accounts.find((a) => a.id === spare.id).open === 300087),
     );
+    await go('/accounts');
+    await check('paise shown in balance and assets total', (async () => (await has('₹3,000.87')) && (await page.getByText(/\.87/).count()) >= 2)());
 
     await go('/category/new?kind=e', 600);
     await fill('e.g. Dairy', 'Pets');

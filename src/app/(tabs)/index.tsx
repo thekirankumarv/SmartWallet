@@ -72,16 +72,12 @@ export default function Home() {
             <Card style={{ marginTop: 8, gap: 14 }}>
               <View>
                 <Text style={s.muted}>Spent this month</Text>
-                <Text style={[s.big, { fontSize: 36 }]}>{fmt(exp, { decimals: false })}</Text>
+                <Text style={[s.big, { fontSize: 36 }]}>{fmt(exp)}</Text>
               </View>
               {budget > 0 && (
                 <View style={{ gap: 6 }}>
                   <Bar value={exp} max={budget} color={exp > budget ? C.red : C.accent} />
-                  <Text style={s.small}>
-                    {exp > budget
-                      ? `${fmt(exp - budget, { decimals: false })} over budget`
-                      : `${fmt(budget - exp, { decimals: false })} left of ${fmt(budget, { decimals: false })}`}
-                  </Text>
+                  <Text style={s.small}>{exp > budget ? `${fmt(exp - budget)} over budget` : `${fmt(budget - exp)} left of ${fmt(budget)}`}</Text>
                 </View>
               )}
               <View style={st.pills}>
@@ -100,7 +96,7 @@ export default function Home() {
         renderSectionHeader={({ section }) => (
           <View style={[s.row, { justifyContent: 'space-between', marginTop: 22, marginBottom: 4, paddingHorizontal: 4 }]}>
             <Text style={st.day}>{dayLabel(section.d)}</Text>
-            <Text style={[st.day, { color: C.dim }]}>{section.net === 0 ? '' : fmt(section.net, { sign: true, decimals: false })}</Text>
+            <Text style={[st.day, { color: C.dim }]}>{section.net === 0 ? '' : fmt(section.net, { sign: true })}</Text>
           </View>
         )}
         renderItem={({ item }) => <TxRow tx={item} />}
@@ -122,7 +118,7 @@ function Pill({ label, value, color }: { label: string; value: number; color: st
     <View style={st.pill}>
       <Text style={s.small}>{label}</Text>
       <Text style={[s.amt, { color, fontSize: 15 }]} numberOfLines={1} adjustsFontSizeToFit>
-        {fmt(value, { decimals: false })}
+        {fmt(value)}
       </Text>
     </View>
   );

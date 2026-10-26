@@ -112,7 +112,7 @@ export default function Stats() {
                 <View style={{ flex: 1, gap: 6 }}>
                   <View style={[s.row, { justifyContent: 'space-between' }]}>
                     <Text style={s.rowTitle}>{r.cat?.name ?? 'Unknown'}</Text>
-                    <Text style={s.amt}>{fmt(r.amt, { decimals: false })}</Text>
+                    <Text style={s.amt}>{fmt(r.amt)}</Text>
                   </View>
                   <View style={[s.row, { gap: 10 }]}>
                     <View style={{ flex: 1 }}>
@@ -129,7 +129,7 @@ export default function Stats() {
                     .map(([sid, amt]) => (
                       <View key={sid} style={[s.row, { justifyContent: 'space-between', paddingVertical: 6 }]}>
                         <Text style={{ color: C.sub, fontSize: 14 }}>{subName(r.cat, sid) ?? 'General'}</Text>
-                        <Text style={[s.amt, { fontSize: 14, color: C.sub }]}>{fmt(amt, { decimals: false })}</Text>
+                        <Text style={[s.amt, { fontSize: 14, color: C.sub }]}>{fmt(amt)}</Text>
                       </View>
                     ))}
                 </View>
@@ -141,7 +141,7 @@ export default function Stats() {
 
       {mode === 'month' && data.budgets.length > 0 && (
         <>
-          <Section title="Budget" right={<Text style={s.muted}>{`${fmt(data.exp, { decimals: false })} / ${fmt(totalBudget, { decimals: false })}`}</Text>} />
+          <Section title="Budget" right={<Text style={s.muted}>{`${fmt(data.exp)} / ${fmt(totalBudget)}`}</Text>} />
           <Card style={{ gap: 16 }}>
             {data.budgets.map(({ c, spent }) => {
               const over = spent > c.budget!;
@@ -152,7 +152,7 @@ export default function Stats() {
                       {c.icon} {c.name}
                     </Text>
                     <Text style={[s.small, { color: over ? C.red : C.sub, marginTop: 0 }]}>
-                      {fmt(spent, { decimals: false })} / {fmt(c.budget!, { decimals: false })}
+                      {fmt(spent)} / {fmt(c.budget!)}
                     </Text>
                   </View>
                   <Bar value={spent} max={c.budget!} color={over ? C.red : spent > c.budget! * 0.8 ? C.amber : C.green} />

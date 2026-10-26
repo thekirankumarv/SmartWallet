@@ -2,7 +2,7 @@ export const uid = () => Date.now().toString(36) + Math.random().toString(36).sl
 
 export const toPaise = (rupees: number) => Math.round(rupees * 100);
 
-export function fmt(paise: number, opts: { sign?: boolean; decimals?: boolean } = {}) {
+export function fmt(paise: number, opts: { sign?: boolean } = {}) {
   const neg = paise < 0;
   const abs = Math.abs(paise);
   const rupees = Math.floor(abs / 100);
@@ -11,7 +11,7 @@ export function fmt(paise: number, opts: { sign?: boolean; decimals?: boolean } 
   const last3 = s.slice(-3);
   const rest = s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',');
   let out = '₹' + (rest ? rest + ',' + last3 : last3);
-  if (ps && opts.decimals !== false) out += '.' + String(ps).padStart(2, '0');
+  if (ps) out += '.' + String(ps).padStart(2, '0');
   if (neg) out = '-' + out;
   else if (opts.sign) out = '+' + out;
   return out;
@@ -23,7 +23,7 @@ export function fmtShort(paise: number) {
   if (r >= 1e7) return `${sign}₹${+(r / 1e7).toFixed(2)}Cr`;
   if (r >= 1e5) return `${sign}₹${+(r / 1e5).toFixed(2)}L`;
   if (r >= 1e3) return `${sign}₹${+(r / 1e3).toFixed(1)}k`;
-  return `${sign}₹${Math.round(r)}`;
+  return fmt(paise);
 }
 
 export function calc(expr: string): number {

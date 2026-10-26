@@ -26,11 +26,11 @@ export default function Loans() {
           <Card style={[s.row, { gap: 8 }]}>
             <View style={{ flex: 1 }}>
               <Text style={s.small}>Total outstanding</Text>
-              <Text style={[s.amt, { color: C.red, fontSize: 20, marginTop: 4 }]}>{fmt(owedTotal, { decimals: false })}</Text>
+              <Text style={[s.amt, { color: C.red, fontSize: 20, marginTop: 4 }]}>{fmt(owedTotal)}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.small}>EMI per month</Text>
-              <Text style={[s.amt, { fontSize: 20, marginTop: 4 }]}>{fmt(emiTotal, { decimals: false })}</Text>
+              <Text style={[s.amt, { fontSize: 20, marginTop: 4 }]}>{fmt(emiTotal)}</Text>
             </View>
           </Card>
           {loans.map((a) => {
@@ -46,7 +46,7 @@ export default function Loans() {
                   </View>
                   <View>
                     <Text style={s.small}>Outstanding</Text>
-                    <Text style={[s.big, { fontSize: 26, color: owed ? C.text : C.green }]}>{owed ? fmt(owed, { decimals: false }) : 'Closed 🎉'}</Text>
+                    <Text style={[s.big, { fontSize: 26, color: owed ? C.text : C.green }]}>{owed ? fmt(owed) : 'Closed 🎉'}</Text>
                   </View>
                   {principal > 0 && (
                     <View style={{ gap: 6 }}>
@@ -55,7 +55,7 @@ export default function Loans() {
                     </View>
                   )}
                   <View style={[s.row, { justifyContent: 'space-between' }]}>
-                    <Text style={s.muted}>EMI {a.emi ? fmt(a.emi, { decimals: false }) : '—'}</Text>
+                    <Text style={s.muted}>EMI {a.emi ? fmt(a.emi) : '—'}</Text>
                     <Text style={s.muted}>{!owed ? '' : left === Infinity ? 'Set EMI' : `Ends ${monthLabel(addMonths(monthOf(today()), left))}`}</Text>
                   </View>
                 </Card>

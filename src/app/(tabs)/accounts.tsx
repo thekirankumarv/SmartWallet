@@ -21,16 +21,16 @@ export default function Accounts() {
       <Card style={{ gap: 14 }}>
         <View>
           <Text style={s.muted}>Net worth (incl. loans)</Text>
-          <Text style={[s.big, { color: assets + debt < 0 ? C.red : C.text }]}>{fmt(assets + debt, { decimals: false })}</Text>
+          <Text style={[s.big, { color: assets + debt < 0 ? C.red : C.text }]}>{fmt(assets + debt)}</Text>
         </View>
         <View style={[s.row, { gap: 8 }]}>
           <View style={{ flex: 1, backgroundColor: C.card2, borderRadius: 14, padding: 10 }}>
             <Text style={s.small}>Assets</Text>
-            <Text style={[s.amt, { color: C.green }]}>{fmt(assets, { decimals: false })}</Text>
+            <Text style={[s.amt, { color: C.green }]}>{fmt(assets)}</Text>
           </View>
           <View style={{ flex: 1, backgroundColor: C.card2, borderRadius: 14, padding: 10 }}>
             <Text style={s.small}>Liabilities</Text>
-            <Text style={[s.amt, { color: C.red }]}>{fmt(-debt, { decimals: false })}</Text>
+            <Text style={[s.amt, { color: C.red }]}>{fmt(-debt)}</Text>
           </View>
         </View>
       </Card>
@@ -49,7 +49,7 @@ export default function Accounts() {
         const sum = list.reduce((x, a) => x + bal[a.id], 0) * debtSign;
         return (
           <View key={type}>
-            <Section title={label} right={<Text style={s.muted}>{(debtSign < 0 ? 'Owed ' : '') + fmt(sum, { decimals: false })}</Text>} />
+            <Section title={label} right={<Text style={s.muted}>{(debtSign < 0 ? 'Owed ' : '') + fmt(sum)}</Text>} />
             <Card style={{ paddingVertical: 6, paddingHorizontal: 10 }}>
               {list.map((a) => (
                 <Row

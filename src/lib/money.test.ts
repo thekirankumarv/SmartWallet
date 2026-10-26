@@ -1,6 +1,6 @@
 // Run: npx tsx src/lib/money.test.ts
 import assert from 'node:assert/strict';
-import { addDays, addMonths, calc, fmt, isValidYmd, lastDayOf, monthsLeft, ymd } from './money';
+import { addDays, addMonths, calc, fmt, fmtShort, isValidYmd, lastDayOf, monthsLeft, ymd } from './money';
 
 assert.equal(calc('47+205'), 252);
 assert.equal(calc('2+3×4'), 14);
@@ -16,6 +16,9 @@ assert.equal(fmt(12345678), '₹1,23,456.78');
 assert.equal(fmt(100000), '₹1,000');
 assert.equal(fmt(-2002400), '-₹20,024');
 assert.equal(fmt(4700, { sign: true }), '+₹47');
+assert.equal(fmt(100087), '₹1,000.87');
+assert.equal(fmtShort(4750), '₹47.50');
+assert.equal(fmtShort(150000), '₹1.5k');
 
 assert.equal(addDays('2026-03-01', -1), '2026-02-28');
 assert.equal(addDays('2026-12-31', 1), '2027-01-01');
