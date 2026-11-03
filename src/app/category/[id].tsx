@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, Switch, Text, TextInput, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { PanResponder, Pressable, Switch, Text, TextInput, View } from 'react-native';
 import { toPaise, uid } from '../../lib/money';
 import { useStore } from '../../lib/store';
 import type { Category, Sub } from '../../lib/types';
@@ -19,6 +19,21 @@ export default function CategoryEdit() {
   const [hidden, setHidden] = useState(!!existing?.hidden);
   const [subs, setSubs] = useState<Sub[]>(existing?.subs ?? []);
   const [newSub, setNewSub] = useState('');
+  const [drag, setDrag] = useState<{ id: string; dy: number } | null>(null);
+  const rowH = useRef(44);
+
+  // Functional updates so DragHandle can keep the first-render callbacks.
+  const dragSub = (sid: string, dy: number) => setDrag({ id: sid, dy });
+  const dropSub = (sid: string, dy: number) => {
+    setDrag(null);
+    setSubs((cur) => {
+      const i = cur.findIndex((x) => x.id === sid);
+      const to = Math.max(0, Math.min(cur.length - 1, i + Math.round(dy / rowH.current)));
+      const next = [...cur];
+      next.splice(to, 0, ...next.splice(i, 1));
+      return next;
+    });
+  };
 
   const used = (sid: string) => store.txs.some((t) => t.c === id && t.s === sid);
 
@@ -80,7 +95,16 @@ export default function CategoryEdit() {
           <Text style={s.label}>Subcategories</Text>
           <Card style={{ paddingVertical: 4, paddingHorizontal: 12 }}>
             {subs.map((x, i) => (
-              <View key={x.id} style={[s.row, { paddingVertical: 4, opacity: x.hidden ? 0.45 : 1 }]}>
+              <View
+                key={x.id}
+                onLayout={(e) => (rowH.current = e.nativeEvent.layout.height)}
+                style={[
+                  s.row,
+                  { paddingVertical: 4, opacity: x.hidden ? 0.45 : 1 },
+                  drag?.id === x.id && { transform: [{ translateY: drag.dy }], zIndex: 1, backgroundColor: C.card2 },
+                ]}
+              >
+                <DragHandle id={x.id} onDrag={dragSub} onDrop={dropSub} />
                 <TextInput
                   value={x.name}
                   onChangeText={(v) => setSubs(subs.map((y, j) => (j === i ? { ...y, name: v } : y)))}
@@ -124,5 +148,24 @@ export default function CategoryEdit() {
         {existing && <Btn label="Delete category" kind="danger" icon="trash-outline" onPress={remove} />}
       </View>
     </Screen>
+  );
+}
+
+type DragFn = (id: string, dy: number) => void;
+
+function DragHandle({ id, onDrag, onDrop }: { id: string; onDrag: DragFn; onDrop: DragFn }) {
+  const [pan] = useState(() =>
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderMove: (_, g) => onDrag(id, g.dy),
+      onPanResponderRelease: (_, g) => onDrop(id, g.dy),
+      onPanResponderTerminate: (_, g) => onDrop(id, g.dy),
+    }),
+  );
+  return (
+    <View {...pan.panHandlers} hitSlop={8} style={{ paddingRight: 10 }} accessibilityLabel="Drag to reorder">
+      <Ionicons name="reorder-three-outline" size={22} color={C.dim} />
+    </View>
   );
 }
