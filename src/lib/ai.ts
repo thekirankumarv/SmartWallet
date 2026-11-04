@@ -1,7 +1,7 @@
 import { norm } from './csv';
 import type { Draft } from './ledger';
 import { allTags, canSpend, tidyTags, validate } from './ledger';
-import { ADJ_E, ADJ_I } from './seed';
+import { ADJ_E, ADJ_I, INTEREST_SUB } from './seed';
 import { isValidYmd, parseYmd, toPaise } from './money';
 import type { Data } from './types';
 
@@ -143,6 +143,7 @@ Rules:
 - type: "income" for money received (salary, refund, interest, cashback, gift received), "transfer" for moving money between the user's own accounts or paying a credit card or loan, otherwise "expense".
 - category and subcategory: pick ids from the lists. The subcategory must belong to the category. Leave subcategory empty if none fits.
 - account: the account mentioned (e.g. "by cash", "from savings"), otherwise "${defaultAcc(s) ?? ''}". For transfers, account is where money leaves and to_account is where it goes.
+- Paying a loan (EMI or interest) is always a transfer to that loan account, never an expense. Set subcategory to "${INTEREST_SUB}" if it's an interest payment, otherwise leave it empty.
 - note: only extra detail not covered by the category (a place or person), otherwise empty.
 - tags: ${tags.length ? 'every tag from the tag list the speaker mentions for that entry (a shop, app or item), otherwise empty' : 'always empty'}.
 - heard: what the speaker said, written out.
@@ -235,6 +236,7 @@ export function parseReply(reply: unknown, s: Data, today: string): Parsed {
     const draft: Draft = { t, amt: toPaise(amount), d, a: acc && (t === 'x' || canSpend(acc)) ? acc.id : (fallback ?? '') };
     if (t === 'x') {
       draft.to = byIdOrName(accs, e.to_account)?.id;
+      if (draft.to && accs.find((a) => a.id === draft.to)?.type === 'loan' && e.subcategory === INTEREST_SUB) draft.s = INTEREST_SUB;
     } else {
       const cat = byIdOrName(visibleCats(s, t), e.category);
       draft.c = cat?.id;

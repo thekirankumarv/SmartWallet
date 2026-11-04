@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 import { fmt, parseYmd, ymd } from '../lib/money';
 import { catById, subName, useStore } from '../lib/store';
+import { LOAN_CAT } from '../lib/seed';
 import type { AccountType, Tx } from '../lib/types';
 
 export const C = {
@@ -324,7 +325,7 @@ export function TxRow({ tx, showDate }: { tx: Tx; showDate?: boolean }) {
   const acc = (id?: string) => accounts.find((a) => a.id === id)?.name ?? '?';
   const c = catById(cats, tx.c);
   const title = tx.t === 'x' ? `${acc(tx.a)} → ${acc(tx.to)}` : (subName(c, tx.s) ?? c?.name ?? 'Unknown');
-  const meta = [showDate && tx.d, tx.t === 'x' ? 'Transfer' : subName(c, tx.s) ? c?.name : undefined, tx.t !== 'x' && acc(tx.a)].filter(Boolean).join(' · ');
+  const meta = [showDate && tx.d, tx.t === 'x' ? (tx.s ? `Loan ${subName(catById(cats, LOAN_CAT), tx.s) ?? 'payment'}` : 'Transfer') : subName(c, tx.s) ? c?.name : undefined, tx.t !== 'x' && acc(tx.a)].filter(Boolean).join(' · ');
   return (
     <Row
       onPress={() => router.push({ pathname: '/tx', params: { id: tx.id } })}

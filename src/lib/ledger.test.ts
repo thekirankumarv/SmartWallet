@@ -224,4 +224,38 @@ assert.deepEqual(tg.txs.find((t) => t.amt === 200)!.g, ['instamart']);
   assert.ok(L.canSpend({ type: 'card' }) && !L.canSpend({ type: 'fd' }) && !L.canSpend({ type: 'loan' }));
 }
 
+// loan payments: same result from Pay EMI (transfer) and New Transaction (Loan category + loan picked)
+{
+  let w: Data = seed();
+  w = L.saveAccount(w, { id: 'bank', name: 'Bank', type: 'bank', open: 100000_00 });
+  w = L.saveAccount(w, { id: 'edu', name: 'Education Loan', type: 'loan', open: -200000_00, rate: 0, emi: 10000_00 }, '2026-10-26');
+  const owed = () => -L.balances(w).edu;
+  const loanFlows = () => L.flows(w, '2026-01-01', '2026-12-31').filter((f) => f.c === LOAN_CAT);
+  const asExpense: L.Draft = { t: 'e', amt: 10000_00, d: '2026-11-01', a: 'bank', c: LOAN_CAT, s: L.EMI_SUB };
+  // a plain Loan expense from a bank would never reach the loan, so it's refused
+  assert.equal(L.addTxs(w, [asExpense]).error, 'Pick which loan this pays');
+  // with the loan picked it becomes the same transfer Pay EMI makes
+  const viaCategory = L.loanPayment(asExpense, 'edu');
+  assert.deepEqual(L.clean(viaCategory), { t: 'x', amt: 10000_00, d: '2026-11-01', a: 'bank', to: 'edu', s: L.EMI_SUB });
+  w = ok(L.addTxs(w, [viaCategory, { t: 'x', amt: 10000_00, d: '2026-11-02', a: 'bank', to: 'edu' }]));
+  assert.equal(owed(), 180000_00);
+  assert.equal(L.balances(w).bank, 80000_00);
+  assert.deepEqual(loanFlows().map((f) => [f.s, f.amt]), [[L.EMI_SUB, 10000_00], [L.EMI_SUB, 10000_00]]); // counted once each, as EMI
+  // interest paid from the bank: lowers the loan, reported as Loan → Interest
+  w = ok(L.addTxs(w, [L.loanPayment({ ...asExpense, s: INTEREST_SUB, amt: 1500_00 }, 'edu')]));
+  assert.equal(owed(), 178500_00);
+  assert.equal(loanFlows().filter((f) => f.s === INTEREST_SUB)[0].amt, 1500_00);
+  // edit and delete recalculate the loan
+  const pay = w.txs.find((t) => t.s === L.EMI_SUB)!;
+  const { id: _, ...d } = pay;
+  w = ok(L.updateTx(w, pay.id, { ...d, amt: 12000_00 }));
+  assert.equal(owed(), 176500_00);
+  w = L.deleteTx(w, pay.id);
+  assert.equal(owed(), 188500_00);
+  // EMI/Interest mark only on payments into a loan; auto interest on the loan itself still editable
+  assert.equal(L.addTxs(w, [{ t: 'x', amt: 100, d: '2026-11-03', a: 'edu', to: 'bank', s: L.EMI_SUB }]).error, 'Only loan payments can be marked EMI or Interest');
+  assert.equal(L.addTxs(w, [{ t: 'e', amt: 100, d: '2026-11-03', a: 'edu', c: LOAN_CAT, s: INTEREST_SUB }]).error, undefined);
+  assert.equal(L.loanPayment({ ...asExpense, s: 'dairy-0' }, 'edu').s, L.EMI_SUB);
+}
+
 console.log('ledger ok');

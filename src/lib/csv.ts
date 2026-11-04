@@ -1,4 +1,5 @@
 import { allTags, tidyTags } from './ledger';
+import { LOAN_CAT } from './seed';
 import { isValidYmd, toPaise, uid } from './money';
 import type { Account, AccountType, Category, Data, Tx, TxType } from './types';
 
@@ -46,7 +47,7 @@ export function toCsv(s: Data): string {
   const cat = Object.fromEntries(s.cats.map((c) => [c.id, c]));
   const lines = ['Date,Time,Type,Account,To Account,Category,Subcategory,Note,Amount,Tags'];
   for (const t of s.txs) {
-    const c = t.c ? cat[t.c] : undefined;
+    const c = cat[t.c ?? (t.s ? LOAN_CAT : '')]; // loan payments (transfers) carry EMI / Interest
     lines.push(
       [t.d, t.tm, TYPE_OUT[t.t], acc[t.a], t.to ? acc[t.to] : '', c?.name, c?.subs.find((x) => x.id === t.s)?.name, t.n, (t.amt / 100).toFixed(2), t.g?.join(', ')]
         .map(esc)
@@ -161,6 +162,8 @@ export function importCsv(text: string, cur: Data): ImportResult {
       if (!toName) return bad.push(`Line ${line}: transfer without target account`);
       tx.to = account(toName);
       if (tx.to === tx.a) return bad.push(`Line ${line}: transfer to same account`);
+      const loanSub = accounts.find((a) => a.id === tx.to)?.type === 'loan' && cats.find((c) => c.id === LOAN_CAT)?.subs.find((x) => norm(x.name) === norm(get(C.sub)));
+      if (loanSub) tx.s = loanSub.id;
     } else {
       const r = resolve(get(C.cat) || 'Other', get(C.sub), t);
       tx.c = r.c;

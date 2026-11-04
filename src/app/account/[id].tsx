@@ -27,8 +27,8 @@ export default function AccountDetail() {
   const owed = -bal;
   const left = isLoan ? monthsLeft(owed, a.emi ?? 0, a.rate ?? 0) : 0;
   const year = today().slice(0, 4);
-  const interestYear = list.filter((t) => t.s === INTEREST_SUB && t.d.startsWith(year)).reduce((x, t) => x + t.amt, 0);
-  const paidYear = list.filter((t) => t.t === 'x' && t.to === a.id && t.d.startsWith(year)).reduce((x, t) => x + t.amt, 0);
+  const interestYear = all.filter((t) => t.t === 'e' && t.s === INTEREST_SUB && t.d.startsWith(year)).reduce((x, t) => x + t.amt, 0);
+  const paidYear = all.filter((t) => t.t === 'x' && t.to === a.id && t.d.startsWith(year)).reduce((x, t) => x + t.amt, 0);
   const payFrom = lastAcc && lastAcc !== a.id && accounts.find((x) => x.id === lastAcc)?.type !== 'card' ? lastAcc : accounts.find((x) => x.type === 'bank' && x.id !== a.id)?.id;
   const icon = accTypeInfo(a.type)[1];
 

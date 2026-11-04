@@ -301,6 +301,36 @@ async function run(page) {
     await check('liabilities = card dues + loan, limits excluded', has('₹3,30,000'));
     await check('net worth = assets − liabilities', has('-₹2,92,046.13'));
     await check('data persists after reload (HDFC paid EMI and card bill)', has('₹22,000'));
+
+    // loan payment from New Transaction (Loan category) must reach the loan, same as Pay EMI
+    await go('/tx');
+    await tap('Loan');
+    await tap('EMI');
+    await keys(['1', '0', '0', '0']);
+    await tap('HDFC');
+    await tap('Save');
+    await check('Loan expense without a loan is refused', (await dialog()).includes('Pick which loan this pays'));
+    await answer('OK');
+    await check('loan picker offered under Loan category', has('Which loan'));
+    await tap('Edu Loan');
+    await tap('Save');
+    await go('/loans');
+    await check('EMI via New Transaction lowers outstanding to 2,86,500', has('₹2,86,500'));
+    const loanPay = (await stored()).txs.find((t) => t.amt === 1000_00);
+    await check('saved as a transfer to the loan, marked EMI', Promise.resolve(loanPay?.t === 'x' && loanPay.s === 'loan-0' && !loanPay.c));
+    // Pay EMI switched to Expense keeps the loan selected
+    await tap('Edu Loan');
+    await tap('Pay EMI');
+    await tap('Expense');
+    await tap('Loan');
+    await tap('Interest');
+    await keys(['Backspace', 'Backspace', 'Backspace', 'Backspace', 'Backspace', '5', '0', '0']);
+    await tap('Save');
+    await go('/loans');
+    await check('Pay EMI → Expense → Loan Interest lowers outstanding to 2,86,000', has('₹2,86,000'));
+    const edu = (await stored()).accounts.find((a) => a.name === 'Edu Loan');
+    await go(`/account/${edu.id}`);
+    await check('loan history labels the payment', (async () => (await has('Loan EMI')) && (await has('Loan Interest')))());
   } catch (e) {
     log.push('ERROR ' + e.message.split('\n')[0]);
   }

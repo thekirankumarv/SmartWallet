@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addDays, calc, dayLabel, fmt, hm, today, toPaise } from '../lib/money';
-import { allTags, balances, canSpend, cardStatus, tidyTags, useStore, type Draft } from '../lib/store';
-import { ADJ_E, ADJ_I } from '../lib/seed';
+import { allTags, balances, canSpend, cardStatus, EMI_SUB, loanPayment, tidyTags, useStore, type Draft } from '../lib/store';
+import { ADJ_E, ADJ_I, INTEREST_SUB, LOAN_CAT } from '../lib/seed';
 import type { TxType } from '../lib/types';
 import { Btn, C, Chip, Chips, Empty, IconBtn, pickDate, s, Seg, tap, TX_COLOR, goBack, confirmDelete, notify } from '../components/ui';
 
@@ -86,18 +86,26 @@ export default function TxScreen() {
     setPickCat(true);
   };
 
-  const draft = (): Draft => ({
-    t,
-    amt: toPaise(isNaN(value) ? 0 : value),
-    d,
-    tm: editing ? editing.tm : d === today() ? hm(new Date()) : undefined,
-    a: a!,
-    to: t === 'x' ? to : undefined,
-    c: t === 'x' ? undefined : c,
-    s: t === 'x' ? undefined : sub,
-    n: note,
-    g: tags,
-  });
+  const loans = store.accounts.filter((x) => x.type === 'loan' && (!x.hidden || x.id === to));
+  const toLoan = t === 'x' && loans.some((x) => x.id === to);
+  // Loan category paid from a bank/cash/card: needs the loan, and is saved as a payment to it.
+  const askLoan = t === 'e' && c === LOAN_CAT && store.accounts.find((x) => x.id === a)?.type !== 'loan';
+  const loanSub = sub === INTEREST_SUB ? INTEREST_SUB : EMI_SUB;
+  const draft = (): Draft => {
+    const base: Draft = {
+      t,
+      amt: toPaise(isNaN(value) ? 0 : value),
+      d,
+      tm: editing ? editing.tm : d === today() ? hm(new Date()) : undefined,
+      a: a!,
+      to: t === 'x' ? to : undefined,
+      c: t === 'x' ? undefined : c,
+      s: t === 'x' ? (toLoan && sub === INTEREST_SUB ? sub : undefined) : sub,
+      n: note,
+      g: tags,
+    };
+    return askLoan && loans.some((x) => x.id === to) ? loanPayment(base, to!) : base;
+  };
 
   const save = (again?: boolean) => {
     const err = editing ? store.updateTx(editing.id, draft()) : store.addTxs([draft()]);
@@ -181,6 +189,7 @@ export default function TxScreen() {
                   <Chip key={x.id} label={x.name} active={to === x.id} onPress={() => setTo(x.id)} color={color} />
                 ))}
             </Chips>
+            {toLoan && <LoanSubs value={loanSub} onChange={setSub} color={color} />}
           </View>
         ) : (
           <View style={st.group}>
@@ -222,6 +231,25 @@ export default function TxScreen() {
                   .map((x) => (
                     <Chip key={x.id} label={x.name} active={sub === x.id} onPress={() => setSub(sub === x.id ? undefined : x.id)} color={color} />
                   ))}
+              </View>
+            )}
+            {askLoan && (
+              <View style={[st.group, { marginTop: 6 }]}>
+                <Label icon="trending-down-outline" text="Which loan" />
+                {loans.length ? (
+                  <Chips>
+                    {loans.map((x) => (
+                      <Chip key={x.id} label={x.name} active={to === x.id} onPress={() => setTo(x.id)} color={color} />
+                    ))}
+                  </Chips>
+                ) : (
+                  <Pressable onPress={() => router.push({ pathname: '/account/edit', params: { type: 'loan' } })}>
+                    <Text style={s.small}>
+                      No loans yet. <Text style={{ color: C.accent, fontWeight: '700' }}>Add one in Loans</Text> so this payment lowers its balance.
+                    </Text>
+                  </Pressable>
+                )}
+                <Text style={s.small}>Saved as a payment to the loan: lowers what you owe and shows under Loan in Stats.</Text>
               </View>
             )}
           </View>
@@ -319,6 +347,15 @@ export default function TxScreen() {
         </View>
       )}
     </KeyboardAvoidingView>
+  );
+}
+
+function LoanSubs({ value, onChange, color }: { value: string; onChange: (s: string) => void; color: string }) {
+  return (
+    <View style={[st.subs, { marginTop: 4 }]}>
+      <Chip label="EMI" active={value === EMI_SUB} onPress={() => onChange(EMI_SUB)} color={color} />
+      <Chip label="Interest" active={value === INTEREST_SUB} onPress={() => onChange(INTEREST_SUB)} color={color} />
+    </View>
   );
 }
 

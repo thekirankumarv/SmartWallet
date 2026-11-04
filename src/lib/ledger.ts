@@ -26,13 +26,17 @@ export function validate(d: Draft, s: Data, was?: number): string | undefined {
   if (!isValidYmd(d.d)) return 'Invalid date';
   if (!s.accounts.some((a) => a.id === d.a)) return 'Pick an account';
   if (d.t === 'x') {
-    if (!d.to || !s.accounts.some((a) => a.id === d.to)) return 'Pick where the money goes';
+    const to = s.accounts.find((a) => a.id === d.to);
+    if (!to) return 'Pick where the money goes';
     if (d.to === d.a) return 'From and To must differ';
+    if (d.s && (to.type !== 'loan' || !LOAN_SUBS.includes(d.s))) return 'Only loan payments can be marked EMI or Interest';
   } else {
     const c = s.cats.find((c) => c.id === d.c);
     if (!c) return 'Pick a category';
     if (c.kind !== d.t) return 'Category type mismatch';
     if (d.s && !c.subs.some((x) => x.id === d.s)) return 'Unknown subcategory';
+    // A loan payment must reach the loan: it's saved as a transfer to it (see loanPayment), never as a plain expense.
+    if (c.id === LOAN_CAT && d.t === 'e' && s.accounts.find((a) => a.id === d.a)?.type !== 'loan') return 'Pick which loan this pays';
   }
   return overLimit(d, s, was);
 }
@@ -67,11 +71,19 @@ export function tidyTags(raw: string[], known: string[] = []): string[] {
   return out;
 }
 
+export const EMI_SUB = `${LOAN_CAT}-0`;
+const LOAN_SUBS = [EMI_SUB, INTEREST_SUB];
+
+// Paying a loan from a bank, whichever screen it's entered on: a transfer to the loan, tagged EMI or Interest for reports.
+export const loanPayment = (d: Draft, loan: string): Draft => ({ ...d, t: 'x', to: loan, c: undefined, s: d.s && LOAN_SUBS.includes(d.s) ? d.s : EMI_SUB });
+
 export const clean = (d: Draft, known: string[] = []): Draft => {
   const out: Draft = { t: d.t, amt: d.amt, d: d.d, a: d.a };
   if (d.tm) out.tm = d.tm;
-  if (d.t === 'x') out.to = d.to;
-  else {
+  if (d.t === 'x') {
+    out.to = d.to;
+    if (d.s) out.s = d.s;
+  } else {
     out.c = d.c;
     if (d.s) out.s = d.s;
   }
@@ -154,7 +166,7 @@ export function flows(s: Pick<Data, 'accounts' | 'txs'>, from: string, to: strin
   for (const t of s.txs) {
     if (t.d < from || t.d > to) continue;
     if (t.t === 'x') {
-      if (t.to && type[t.to] === 'loan' && type[t.a] !== 'loan') out.push({ kind: 'e', c: LOAN_CAT, s: `${LOAN_CAT}-0`, amt: t.amt, d: t.d });
+      if (t.to && type[t.to] === 'loan' && type[t.a] !== 'loan') out.push({ kind: 'e', c: LOAN_CAT, s: t.s ?? EMI_SUB, amt: t.amt, d: t.d, g: t.g });
     } else if (type[t.a] !== 'loan' && t.c !== ADJ_E && t.c !== ADJ_I) out.push({ kind: t.t, c: t.c!, s: t.s, amt: t.amt, d: t.d, g: t.g });
   }
   return out;

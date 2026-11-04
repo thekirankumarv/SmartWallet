@@ -42,6 +42,18 @@ assert.equal(again.dupes, 5);
 
 assert.equal(importCsv(toCsv(r.data), seed()).added, 5);
 
+// loan interest payment survives export/import as Loan → Interest
+{
+  let w = seed();
+  w = { ...w, accounts: [{ id: 'b', name: 'Bank', type: 'bank', open: 0 }, { id: 'l', name: 'Edu Loan', type: 'loan', open: -100_00 }] };
+  w = { ...w, txs: [{ id: 'p', t: 'x', amt: 500, d: '2026-10-10', a: 'b', to: 'l', s: 'loan-1' }] };
+  const out = toCsv(w);
+  assert.match(out, /Transfer,Bank,Edu Loan,Loan,Interest/);
+  const back = importCsv(out, seed()).data;
+  assert.equal(back.txs[0].s, 'loan-1');
+  assert.equal(back.accounts.find((a) => a.id === back.txs[0].to)!.type, 'loan');
+}
+
 // tags: own column, comma/semicolon split, '#' dropped, case reuses existing, round trip
 const tagged = importCsv(
   `Date,Type,Account,Category,Amount,Tags

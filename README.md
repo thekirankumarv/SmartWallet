@@ -68,6 +68,7 @@ Log expenses in seconds by tapping or just speaking, see where your money goes, 
 ### Loans
 - Dedicated tab with outstanding amount, % repaid and projected payoff month
 - **Pay EMI** pre-fills a transfer from your bank to the loan
+- Paying a loan from New Transaction (Loan category → EMI or Interest) asks which loan and saves the same payment, so the outstanding always updates. Reports show it under Loan → EMI / Interest, counted once
 - Monthly interest is posted automatically at month end on the outstanding balance (reducing-balance method)
 
 ### Categories
