@@ -1,11 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Switch, Text, View } from 'react-native';
-import { calc, fmt, hm, isValidYmd, today, toPaise, uid } from '../../lib/money';
+import { Platform, Pressable, Switch, Text, View } from 'react-native';
+import { calc, dayLabel, fmt, hm, isValidYmd, today, toPaise, uid } from '../../lib/money';
 import { balances, useStore } from '../../lib/store';
 import { ADJ_E, ADJ_I } from '../../lib/seed';
 import type { Account, AccountType } from '../../lib/types';
-import { ACC_TYPES, Btn, C, Chip, Field, Header, isDebt, s, Screen, Seg, goBack, confirmDelete, notify } from '../../components/ui';
+import { ACC_TYPES, Btn, C, Chip, Field, Header, isDebt, pickDate, s, Screen, Seg, goBack, confirmDelete, notify } from '../../components/ui';
 
 const resolveType = (name: string, customTypes: string[]): AccountType => {
   const n = name.toLowerCase();
@@ -71,7 +71,7 @@ export default function AccountEdit() {
     if (isCard && (isNaN(lim) || lim < 0)) return notify('Invalid credit limit');
     if (isCard && (badDay(bill) || badDay(due))) return notify('Days must be 1 to 31');
     if ((fdBacked || type === 'fd') && (isNaN(fd) || fd <= 0)) return notify('Enter the FD amount');
-    if ((fdBacked || type === 'fd') && maturity.trim() && !isValidYmd(maturity.trim())) return notify('Maturity date must be YYYY-MM-DD');
+    if ((fdBacked || type === 'fd') && maturity.trim() && !isValidYmd(maturity.trim())) return notify('Invalid maturity date', `${maturity.trim()} isn’t a real date. Use YYYY-MM-DD, e.g. 2031-09-30.`);
     const target = isDebt(type) ? -toPaise(n) : toPaise(type === 'fd' ? fd : n);
     const fdInfo = { ref: ref.trim() || undefined, maturity: maturity.trim() || undefined, fdRate: parseFloat(fdRate) || undefined };
 
@@ -110,7 +110,21 @@ export default function AccountEdit() {
   const fdFields = (
     <>
       <Field label="FD reference (optional)" value={ref} onChangeText={setRef} placeholder="Deposit or receipt number" />
-      <Field label="Maturity date (optional)" value={maturity} onChangeText={setMaturity} placeholder="YYYY-MM-DD" />
+      {Platform.OS === 'android' ? (
+        <View style={{ gap: 6 }}>
+          <Text style={s.label}>Maturity date (optional)</Text>
+          <Pressable onPress={() => pickDate(maturity || today(), setMaturity)} style={[s.input, s.row, { justifyContent: 'space-between' }]}>
+            <Text style={{ color: maturity ? C.text : C.dim, fontSize: 16 }}>{maturity ? dayLabel(maturity) : 'Pick a date'}</Text>
+            {!!maturity && (
+              <Pressable hitSlop={10} onPress={() => setMaturity('')}>
+                <Text style={{ color: C.accent, fontWeight: '700' }}>Clear</Text>
+              </Pressable>
+            )}
+          </Pressable>
+        </View>
+      ) : (
+        <Field label="Maturity date (optional)" value={maturity} onChangeText={setMaturity} placeholder="YYYY-MM-DD" />
+      )}
       <Field label="FD interest rate (% per year, optional)" value={fdRate} onChangeText={setFdRate} keyboardType="decimal-pad" placeholder="e.g. 7.25" />
     </>
   );
