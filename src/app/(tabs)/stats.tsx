@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -42,9 +43,16 @@ export default function Stats() {
       const mf = f.filter((x) => x.d.startsWith(ym));
       return { m, e: mf.filter((x) => x.kind === 'e').reduce((a, x) => a + x.amt, 0), i: mf.filter((x) => x.kind === 'i').reduce((a, x) => a + x.amt, 0) };
     });
+    const byTag = new Map<string, { amt: number; n: number }>();
+    for (const x of mine)
+      for (const g of x.g ?? []) {
+        const e = byTag.get(g) ?? { amt: 0, n: 0 };
+        byTag.set(g, { amt: e.amt + x.amt, n: e.n + 1 });
+      }
+    const tags = [...byTag].map(([g, v]) => ({ g, ...v })).sort((a, b) => b.amt - a.amt);
     const inc = f.filter((x) => x.kind === 'i').reduce((a, x) => a + x.amt, 0);
     const exp = f.filter((x) => x.kind === 'e').reduce((a, x) => a + x.amt, 0);
-    return { total, rows, budgets, months, inc, exp };
+    return { total, rows, tags, budgets, months, inc, exp };
   }, [txs, accounts, cats, from, to, kind, year]);
 
   const shift = (n: number) => (tap(), setMonth(mode === 'month' ? addMonths(month, n) : addMonths(month, n * 12)));
@@ -137,6 +145,28 @@ export default function Stats() {
             </View>
           ))}
         </Card>
+      )}
+
+      {data.tags.length > 0 && (
+        <>
+          {/* A transaction can carry several tags, so these don't add up to the total. */}
+          <Section title="Tags" />
+          <Card style={{ paddingVertical: 6, paddingHorizontal: 10 }}>
+            {data.tags.map((t) => (
+              <Pressable
+                key={t.g}
+                onPress={() => router.push({ pathname: '/search', params: { tag: t.g, from, to, type: kind } })}
+                style={({ pressed }) => [s.row, { justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 4 }, pressed && { opacity: 0.6 }]}
+              >
+                <Text style={s.rowTitle}>#{t.g}</Text>
+                <View style={[s.row, { gap: 10 }]}>
+                  <Text style={[s.small, { marginTop: 0 }]}>{t.n}×</Text>
+                  <Text style={s.amt}>{fmt(t.amt)}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </Card>
+        </>
       )}
 
       {mode === 'month' && data.budgets.length > 0 && (

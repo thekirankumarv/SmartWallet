@@ -42,6 +42,18 @@ assert.equal(again.dupes, 5);
 
 assert.equal(importCsv(toCsv(r.data), seed()).added, 5);
 
+// tags: own column, comma/semicolon split, '#' dropped, case reuses existing, round trip
+const tagged = importCsv(
+  `Date,Type,Account,Category,Amount,Tags
+2026-10-24,Expense,Cash,Dairy,70,"milk, Swiggy Instamart"
+2026-10-25,Expense,Cash,Dairy,80,#MILK;swiggy instamart
+2026-10-26,Expense,Cash,Dairy,90,`,
+  seed(),
+);
+assert.deepEqual(tagged.data.txs.map((t) => t.g), [['milk', 'Swiggy Instamart'], ['milk', 'Swiggy Instamart'], undefined]);
+const back = importCsv(toCsv(tagged.data), seed()).data.txs;
+assert.deepEqual(back.map((t) => t.g), [['milk', 'Swiggy Instamart'], ['milk', 'Swiggy Instamart'], undefined]);
+
 const file = process.argv[2];
 if (file) {
   const big = importCsv(readFileSync(file, 'utf8'), seed());

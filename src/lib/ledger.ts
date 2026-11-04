@@ -31,7 +31,27 @@ export function validate(d: Draft, s: Data): string | undefined {
   }
 }
 
-export const clean = (d: Draft): Draft => {
+// Every tag in use, most used first.
+export function allTags(txs: Pick<Tx, 'g'>[]) {
+  const n = new Map<string, number>();
+  for (const t of txs) for (const g of t.g ?? []) n.set(g, (n.get(g) ?? 0) + 1);
+  return [...n].sort((x, y) => y[1] - x[1]).map(([g]) => g);
+}
+
+// Trim, drop '#' and commas, dedupe case-insensitively, reuse the spelling of an existing tag.
+export function tidyTags(raw: string[], known: string[] = []): string[] {
+  const out: string[] = [];
+  for (const r of raw.flatMap((x) => x.split(/[,;]/))) {
+    const name = r.trim().replace(/^#+/, '').replace(/\s+/g, ' ').trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (out.some((x) => x.toLowerCase() === key)) continue;
+    out.push(known.find((x) => x.toLowerCase() === key) ?? name);
+  }
+  return out;
+}
+
+export const clean = (d: Draft, known: string[] = []): Draft => {
   const out: Draft = { t: d.t, amt: d.amt, d: d.d, a: d.a };
   if (d.tm) out.tm = d.tm;
   if (d.t === 'x') out.to = d.to;
@@ -40,6 +60,8 @@ export const clean = (d: Draft): Draft => {
     if (d.s) out.s = d.s;
   }
   if (d.n?.trim()) out.n = d.n.trim();
+  const g = tidyTags(d.g ?? [], known);
+  if (g.length) out.g = g;
   if (d.auto) out.auto = 1;
   return out;
 };
@@ -87,6 +109,7 @@ export interface Flow {
   s?: string;
   amt: number;
   d: string;
+  g?: string[];
 }
 export function flows(s: Pick<Data, 'accounts' | 'txs'>, from: string, to: string): Flow[] {
   const type: Record<string, string> = {};
@@ -96,7 +119,7 @@ export function flows(s: Pick<Data, 'accounts' | 'txs'>, from: string, to: strin
     if (t.d < from || t.d > to) continue;
     if (t.t === 'x') {
       if (t.to && type[t.to] === 'loan' && type[t.a] !== 'loan') out.push({ kind: 'e', c: LOAN_CAT, s: `${LOAN_CAT}-0`, amt: t.amt, d: t.d });
-    } else if (type[t.a] !== 'loan' && t.c !== ADJ_E && t.c !== ADJ_I) out.push({ kind: t.t, c: t.c!, s: t.s, amt: t.amt, d: t.d });
+    } else if (type[t.a] !== 'loan' && t.c !== ADJ_E && t.c !== ADJ_I) out.push({ kind: t.t, c: t.c!, s: t.s, amt: t.amt, d: t.d, g: t.g });
   }
   return out;
 }
@@ -110,7 +133,8 @@ export function addTxs(s: Data, drafts: Draft[]): Result {
   });
   const error = errors.filter(Boolean).join('\n');
   if (error) return { data: s, error };
-  const added = drafts.map((d) => ({ id: uid(), ...clean(d) }));
+  const known = [...allTags(s.txs), ...allTags(drafts)]; // existing spelling wins, then first in this batch
+  const added = drafts.map((d) => ({ id: uid(), ...clean(d, known) }));
   const last = drafts.filter((d) => d.c !== ADJ_E && d.c !== ADJ_I).pop();
   return { data: { ...s, txs: sortTxs([...s.txs, ...added]), lastAcc: last?.a ?? s.lastAcc } };
 }
@@ -118,7 +142,7 @@ export function addTxs(s: Data, drafts: Draft[]): Result {
 export function updateTx(s: Data, id: string, d: Draft): Result {
   const error = validate(d, s);
   if (error) return { data: s, error };
-  return { data: { ...s, txs: sortTxs(s.txs.map((t) => (t.id === id ? { id, ...clean(d) } : t))) } };
+  return { data: { ...s, txs: sortTxs(s.txs.map((t) => (t.id === id ? { id, ...clean(d, allTags(s.txs)) } : t))) } };
 }
 
 export const deleteTx = (s: Data, id: string): Data => ({ ...s, txs: s.txs.filter((t) => t.id !== id) });
@@ -144,3 +168,22 @@ export function deleteCategory(s: Data, id: string): Result {
   if (s.txs.some((t) => t.c === id)) return { data: s, error: 'This category has transactions. Hide it instead.' };
   return { data: { ...s, cats: s.cats.filter((c) => c.id !== id) } };
 }
+
+const withTags = (s: Data, fn: (g: string[]) => string[]): Data => ({
+  ...s,
+  txs: s.txs.map((t) => {
+    if (!t.g) return t;
+    const g = fn(t.g);
+    const { g: _, ...rest } = t;
+    return g.length ? { ...t, g } : rest;
+  }),
+});
+
+// Renaming onto an existing tag merges the two.
+export function renameTag(s: Data, from: string, to: string): Result {
+  const [name] = tidyTags([to], allTags(s.txs).filter((x) => x !== from));
+  if (!name) return { data: s, error: 'Enter a tag name' };
+  return { data: withTags(s, (g) => tidyTags(g.map((x) => (x === from ? name : x)))) };
+}
+
+export const deleteTag = (s: Data, tag: string): Data => withTags(s, (g) => g.filter((x) => x !== tag));

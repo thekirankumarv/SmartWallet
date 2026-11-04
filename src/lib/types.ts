@@ -41,6 +41,7 @@ export interface Tx {
   c?: string;
   s?: string;
   n?: string; // note
+  g?: string[]; // tags
   auto?: 1; // generated (loan interest)
 }
 

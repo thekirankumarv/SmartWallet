@@ -1,6 +1,6 @@
 import { norm } from './csv';
 import type { Draft } from './ledger';
-import { validate } from './ledger';
+import { allTags, tidyTags, validate } from './ledger';
 import { ADJ_E, ADJ_I } from './seed';
 import { isValidYmd, parseYmd, toPaise } from './money';
 import type { Data } from './types';
@@ -123,6 +123,7 @@ const defaultAcc = (s: Data) => {
 export function buildRequest(s: Data, today: string, audio: { data: string; mimeType: string }) {
   const cats = [...visibleCats(s, 'e'), ...visibleCats(s, 'i')];
   const accs = visibleAccs(s);
+  const tags = allTags(s.txs);
   const weekday = parseYmd(today).toLocaleDateString('en-US', { weekday: 'long' });
   const catLines = (kind: 'e' | 'i') =>
     visibleCats(s, kind)
@@ -143,6 +144,7 @@ Rules:
 - category and subcategory: pick ids from the lists. The subcategory must belong to the category. Leave subcategory empty if none fits.
 - account: the account mentioned (e.g. "by cash", "from savings"), otherwise "${defaultAcc(s) ?? ''}". For transfers, account is where money leaves and to_account is where it goes.
 - note: only extra detail not covered by the category (a place or person), otherwise empty.
+- tags: ${tags.length ? 'every tag from the tag list the speaker mentions for that entry (a shop, app or item), otherwise empty' : 'always empty'}.
 - heard: what the speaker said, written out.
 - If nothing about money was said, return no entries.
 
@@ -153,7 +155,7 @@ Income categories:
 ${catLines('i')}
 
 Accounts:
-${accs.map((a) => `- ${a.id}: ${a.name} (${a.type})`).join('\n')}`;
+${accs.map((a) => `- ${a.id}: ${a.name} (${a.type})`).join('\n')}${tags.length ? `\n\nTags:\n${tags.map((g) => `- ${g}`).join('\n')}` : ''}`;
 
   const ids = (xs: string[]) => (xs.length ? { type: 'STRING', enum: xs } : { type: 'STRING' });
   const schema = {
@@ -173,6 +175,7 @@ ${accs.map((a) => `- ${a.id}: ${a.name} (${a.type})`).join('\n')}`;
             account: ids(accs.map((a) => a.id)),
             to_account: ids(accs.map((a) => a.id)),
             note: { type: 'STRING' },
+            ...(tags.length && { tags: { type: 'ARRAY', items: ids(tags) } }),
           },
           required: ['type', 'amount', 'date', 'account'],
         },
@@ -196,6 +199,7 @@ interface RawEntry {
   account?: string;
   to_account?: string;
   note?: string;
+  tags?: string[];
 }
 
 export interface Parsed {
@@ -220,6 +224,7 @@ export function parseReply(reply: unknown, s: Data, today: string): Parsed {
   }
   const accs = s.accounts;
   const fallback = defaultAcc(s);
+  const known = allTags(s.txs);
   const drafts: Draft[] = [];
   for (const e of out.entries ?? []) {
     const amount = typeof e.amount === 'string' ? parseFloat(e.amount.replace(/[^\d.]/g, '')) : e.amount;
@@ -237,6 +242,8 @@ export function parseReply(reply: unknown, s: Data, today: string): Parsed {
       if (sub) draft.s = sub.id;
     }
     if (e.note?.trim()) draft.n = e.note.trim();
+    const g = tidyTags(Array.isArray(e.tags) ? e.tags.filter((x) => typeof x === 'string') : [], known).filter((x) => known.includes(x));
+    if (g.length) draft.g = g;
     drafts.push(draft);
   }
   if (!drafts.length) throw new AiError('No amounts heard', 'Didn’t catch any amounts. Hold the mic and say something like “milk 47, petrol 205”.', 'reply');

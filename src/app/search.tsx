@@ -1,21 +1,25 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, Text, TextInput, View } from 'react-native';
 import { addMonths, fmt, lastDayOf, monthOf, today } from '../lib/money';
-import { catById, subName, useStore } from '../lib/store';
+import { allTags, catById, subName, useStore } from '../lib/store';
 import type { TxType } from '../lib/types';
 import { C, Chip, Chips, Empty, Header, pickDate, s, Screen, TxRow } from '../components/ui';
 
 type Range = 'all' | 'month' | 'last' | 'year' | 'custom';
 
 export default function Search() {
+  const p = useLocalSearchParams<{ tag?: string; from?: string; to?: string; type?: TxType }>();
   const { txs, cats, accounts } = useStore();
   const [q, setQ] = useState('');
-  const [type, setType] = useState<TxType | ''>('');
+  const [type, setType] = useState<TxType | ''>(p.type ?? '');
   const [acc, setAcc] = useState('');
   const [cat, setCat] = useState('');
-  const [range, setRange] = useState<Range>('all');
-  const [from, setFrom] = useState(`${monthOf(today())}-01`);
-  const [to, setTo] = useState(today());
+  const [tags, setTags] = useState<string[]>(p.tag ? [p.tag] : []);
+  const known = useMemo(() => allTags(txs), [txs]);
+  const [range, setRange] = useState<Range>(p.from && p.to ? 'custom' : 'all');
+  const [from, setFrom] = useState(p.from ?? `${monthOf(today())}-01`);
+  const [to, setTo] = useState(p.to ?? today());
 
   const [lo, hi] = useMemo(() => {
     const m = monthOf(today());
@@ -34,24 +38,25 @@ export default function Search() {
       if (type && t.t !== type) return false;
       if (acc && t.a !== acc && t.to !== acc) return false;
       if (cat && t.c !== cat) return false;
+      if (!tags.every((g) => t.g?.includes(g))) return false;
       if (!words.length) return true;
       const c = catById(cats, t.c);
-      const hay = [t.n, c?.name, subName(c, t.s), accName[t.a], t.to && accName[t.to], String(t.amt / 100), t.d].join(' ').toLowerCase();
+      const hay = [t.n, c?.name, subName(c, t.s), accName[t.a], t.to && accName[t.to], String(t.amt / 100), t.d, ...(t.g ?? [])].join(' ').toLowerCase();
       return words.every((w) => hay.includes(w));
     });
-  }, [txs, cats, accounts, q, type, acc, cat, lo, hi]);
+  }, [txs, cats, accounts, q, type, acc, cat, tags, lo, hi]);
 
   const total = results.reduce((a, t) => a + (t.t === 'e' ? -t.amt : t.t === 'i' ? t.amt : 0), 0);
-  const filtered = !!(q || type || acc || cat || range !== 'all');
+  const filtered = !!(q || type || acc || cat || tags.length || range !== 'all');
 
   return (
     <Screen>
       <Header title="Search" back />
       <TextInput
-        autoFocus
+        autoFocus={!p.tag}
         value={q}
         onChangeText={setQ}
-        placeholder="Note, category, account, amount…"
+        placeholder="Note, category, tag, account, amount…"
         placeholderTextColor={C.dim}
         selectionColor={C.accent}
         style={s.input}
@@ -104,6 +109,19 @@ export default function Search() {
               <Chip key={c.id} label={`${c.icon} ${c.name}`} active={cat === c.id} onPress={() => setCat(cat === c.id ? '' : c.id)} />
             ))}
         </Chips>
+        {known.length > 0 && (
+          <Chips>
+            <Chip label="Any tag" active={!tags.length} onPress={() => setTags([])} />
+            {known.map((g) => (
+              <Chip
+                key={g}
+                label={`#${g}`}
+                active={tags.includes(g)}
+                onPress={() => setTags(tags.includes(g) ? tags.filter((x) => x !== g) : [...tags, g])}
+              />
+            ))}
+          </Chips>
+        )}
       </View>
       {filtered && (
         <View style={[s.row, { justifyContent: 'space-between', marginTop: 14, marginBottom: 4 }]}>

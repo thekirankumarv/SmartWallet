@@ -74,6 +74,7 @@ export default function Settings() {
       )}
       <Card style={{ paddingVertical: 6, paddingHorizontal: 10 }}>
         {item('pricetags', C.accent, 'Categories & budgets', 'Add, rename, hide, set monthly budget', () => router.push('/categories'))}
+        {item('pricetag', C.green, 'Tags', 'Rename, merge or delete tags', () => router.push('/tags'))}
         {item('wallet', C.blue, 'Accounts', 'Banks, cash, wallets, cards, loans', () => router.push('/accounts'))}
         {item('mic', C.red, 'Voice entry', apiKey ? 'On · Gemini' : 'Set up with a free Gemini key', () => router.push('/voice-settings'))}
       </Card>

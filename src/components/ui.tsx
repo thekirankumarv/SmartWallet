@@ -329,7 +329,7 @@ export function TxRow({ tx, showDate }: { tx: Tx; showDate?: boolean }) {
       onPress={() => router.push({ pathname: '/tx', params: { id: tx.id } })}
       icon={<Bubble emoji={tx.t === 'x' ? '🔁' : c?.icon} />}
       title={title}
-      sub={[meta, tx.n].filter(Boolean).join('  ·  ')}
+      sub={[meta, tx.n, tx.g?.map((g) => `#${g}`).join(' ')].filter(Boolean).join('  ·  ')}
       right={<Text style={[s.amt, { color: TX_COLOR[tx.t] }]}>{(tx.t === 'e' ? '-' : tx.t === 'i' ? '+' : '') + fmt(tx.amt)}</Text>}
     />
   );

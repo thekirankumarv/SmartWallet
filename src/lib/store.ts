@@ -6,7 +6,7 @@ import type { Draft } from './ledger';
 import { seed } from './seed';
 import type { Account, Category, Data } from './types';
 
-export const { balances, flows } = L;
+export const { balances, flows, allTags, tidyTags } = L;
 export const parseBackup = L.parse;
 export type { Flow } from './ledger';
 
@@ -23,6 +23,8 @@ interface State extends Data {
   deleteAccount: (id: string) => string | undefined;
   saveCategory: (c: Category) => void;
   deleteCategory: (id: string) => string | undefined;
+  renameTag: (from: string, to: string) => string | undefined;
+  deleteTag: (tag: string) => void;
   replaceAll: (d: Data) => void;
 }
 
@@ -97,6 +99,8 @@ export const useStore = create<State>()((set, get) => {
     deleteAccount: (id) => apply(L.deleteAccount(get(), id)),
     saveCategory: (c) => set(pick(L.saveCategory(get(), c))),
     deleteCategory: (id) => apply(L.deleteCategory(get(), id)),
+    renameTag: (from, to) => apply(L.renameTag(get(), from, to)),
+    deleteTag: (tag) => set(pick(L.deleteTag(get(), tag))),
     replaceAll: (d) => set({ v: 1, accounts: d.accounts, cats: d.cats, txs: L.sortTxs([...d.txs]), lastAcc: d.lastAcc, loadError: undefined }),
   };
 });
@@ -112,3 +116,4 @@ export function initStore() {
 
 export const catById = (cats: Category[], id?: string) => cats.find((c) => c.id === id);
 export const subName = (c: Category | undefined, sid?: string) => c?.subs.find((s) => s.id === sid)?.name;
+

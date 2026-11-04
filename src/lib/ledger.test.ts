@@ -130,4 +130,20 @@ assert.deepEqual(L.parse(JSON.stringify(s)).txs.length, s.txs.length);
 assert.throws(() => L.parse('{"v":2}'));
 assert.throws(() => L.parse('not json'));
 
+// tags
+assert.deepEqual(L.clean(exp(100, { g: ['milk', 'Amazon Fresh'] })).g, ['milk', 'Amazon Fresh']);
+assert.equal('g' in L.clean(exp(100, { g: [' ', '#'] })), false);
+assert.deepEqual(L.tidyTags(['#Milk, curd', 'milk', ' swiggy   instamart '], ['milk']), ['milk', 'curd', 'swiggy instamart']);
+let tg = ok(L.addTxs(s, [exp(100, { g: ['milk', 'instamart'] }), exp(200, { g: ['Instamart', 'veg'] }), exp(300, { g: ['veg'] })]));
+assert.deepEqual(tg.txs.find((t) => t.amt === 200)!.g, ['instamart', 'veg']); // reuses existing spelling
+assert.deepEqual(L.allTags(tg.txs), ['instamart', 'veg', 'milk']);
+assert.deepEqual(L.flows(tg, '2026-10-10', '2026-10-10').find((f) => f.amt === 100)!.g, ['milk', 'instamart']);
+tg = ok(L.renameTag(tg, 'milk', 'Instamart')); // merge into existing, no dup in one tx
+assert.deepEqual(tg.txs.find((t) => t.amt === 100)!.g, ['instamart']);
+assert.deepEqual(L.allTags(tg.txs), ['instamart', 'veg']);
+assert.equal(L.renameTag(tg, 'veg', ' # ').error, 'Enter a tag name');
+tg = L.deleteTag(tg, 'veg');
+assert.equal(tg.txs.find((t) => t.amt === 300)!.g, undefined);
+assert.deepEqual(tg.txs.find((t) => t.amt === 200)!.g, ['instamart']);
+
 console.log('ledger ok');

@@ -1,3 +1,4 @@
+import { allTags, tidyTags } from './ledger';
 import { isValidYmd, toPaise, uid } from './money';
 import type { Account, AccountType, Category, Data, Tx, TxType } from './types';
 
@@ -43,11 +44,11 @@ const TYPE_OUT: Record<TxType, string> = { e: 'Expense', i: 'Income', x: 'Transf
 export function toCsv(s: Data): string {
   const acc = Object.fromEntries(s.accounts.map((a) => [a.id, a.name]));
   const cat = Object.fromEntries(s.cats.map((c) => [c.id, c]));
-  const lines = ['Date,Time,Type,Account,To Account,Category,Subcategory,Note,Amount'];
+  const lines = ['Date,Time,Type,Account,To Account,Category,Subcategory,Note,Amount,Tags'];
   for (const t of s.txs) {
     const c = t.c ? cat[t.c] : undefined;
     lines.push(
-      [t.d, t.tm, TYPE_OUT[t.t], acc[t.a], t.to ? acc[t.to] : '', c?.name, c?.subs.find((x) => x.id === t.s)?.name, t.n, (t.amt / 100).toFixed(2)]
+      [t.d, t.tm, TYPE_OUT[t.t], acc[t.a], t.to ? acc[t.to] : '', c?.name, c?.subs.find((x) => x.id === t.s)?.name, t.n, (t.amt / 100).toFixed(2), t.g?.join(', ')]
         .map(esc)
         .join(','),
     );
@@ -103,6 +104,7 @@ export function importCsv(text: string, cur: Data): ImportResult {
     note: col('note'),
     desc: col('description'),
     amt: col('amount', 'inr'),
+    tags: col('tags', 'tag', 'labels'),
   };
   if (C.date < 0 || C.acc < 0 || C.amt < 0 || C.type < 0) throw new Error('CSV needs Date, Account, Amount and Type (or Income/Expense) columns');
 
@@ -113,6 +115,7 @@ export function importCsv(text: string, cur: Data): ImportResult {
   const bad: string[] = [];
   let added = 0;
   let dupes = 0;
+  const known = allTags(cur.txs);
 
   const account = (name: string) => {
     const n = norm(name);
@@ -165,6 +168,11 @@ export function importCsv(text: string, cur: Data): ImportResult {
     }
     const note = [get(C.note), get(C.desc)].filter(Boolean).join(' · ');
     if (note) tx.n = note;
+    const g = tidyTags([get(C.tags)], known);
+    if (g.length) {
+      tx.g = g;
+      known.push(...g.filter((x) => !known.includes(x)));
+    }
     const key = `${tx.t}|${tx.d}|${tx.tm ?? ''}|${tx.amt}|${tx.a}|${tx.to ?? tx.c}`;
     if (seen.has(key)) return dupes++;
     txs.push(tx);

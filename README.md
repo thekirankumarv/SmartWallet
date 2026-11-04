@@ -37,11 +37,13 @@ Log expenses in seconds by tapping or just speaking, see where your money goes, 
 - Quick date chips (Today / Yesterday) plus a native date picker
 - **+ Next** to log several items in a row without leaving the screen
 - Notes, edit, and delete with confirmation
+- **Tags** for anything categories can't capture: the item (`milk`, `veggies`) and where you bought it (`swiggy instamart`, `bigbasket`, `dmart`). Pick from tags you've used or type a new one
+- Swipe left or right to move between months
 - Month-by-month timeline grouped by day with daily totals
 
 ### Voice entry
 - Hold the mic, say *"milk 47, petrol 205 yesterday, salary 60000 to savings"*, release
-- Google Gemini turns speech into entries with the right category, subcategory, account and date ("yesterday", "last Friday", "on the 5th")
+- Google Gemini turns speech into entries with the right category, subcategory, account and date ("yesterday", "last Friday", "on the 5th"), plus any of your existing tags you mention
 - Review screen before anything is saved: fix or remove entries, then save all at once
 - Uses your own free Gemini API key, set up in **Settings → Voice entry**. The key is checked with Google before it's saved and stored encrypted on the phone, never in backups
 - Clear messages for a wrong or expired key, used-up daily limit, no internet and busy servers
@@ -51,6 +53,7 @@ Log expenses in seconds by tapping or just speaking, see where your money goes, 
 - Donut chart by category; tap a category to see its subcategory split
 - Per-category monthly budgets with progress bars (green → amber → red)
 - Month-by-month income vs expense bars for the year
+- Spend per tag for the month or year; tap a tag to see its transactions
 
 ### Accounts
 - Bank accounts, cash, wallets, credit cards and your own custom types, all created by the user
@@ -68,9 +71,10 @@ Log expenses in seconds by tapping or just speaking, see where your money goes, 
 - Ships with a clean, standard set (Dairy, Meat & Eggs, Groceries, Bills & Utilities, Vehicle, …)
 - Add, rename, hide or delete categories and subcategories, and set budgets
 - Items in use can only be hidden, so history is never orphaned
+- **Settings → Tags**: rename, merge (rename onto an existing tag) or delete tags
 
 ### Data & backup
-- Search across notes, categories, accounts and amounts, with filters for date range, type, account and category
+- Search across notes, categories, accounts, tags and amounts, with filters for date range, type, account, category and tags (several tags = must have all)
 - **Backup** to Google Drive (or anywhere) through the Android share sheet, and **restore** from a backup file
 - **CSV export** for spreadsheets, and **CSV import** with automatic matching and duplicate detection
 - Every destructive action asks for confirmation first
@@ -114,6 +118,7 @@ src/
 │   ├── category/           Category editor
 │   ├── categories.tsx      Category list
 │   ├── search.tsx          Search and filters
+│   ├── tags.tsx            Rename, merge, delete tags
 │   ├── tx.tsx              Add / edit transaction (modal)
 │   ├── voice.tsx           Review entries from voice
 │   └── voice-settings.tsx  Gemini API key setup
@@ -185,15 +190,16 @@ The end-to-end suite starts from a fresh install and walks through:
 Export and import use the same columns:
 
 ```csv
-Date,Time,Type,Account,To Account,Category,Subcategory,Note,Amount
-2026-10-24,08:15,Expense,HDFC Bank,,Dairy,Milk,,56
-2026-10-01,,Income,HDFC Bank,,Salary,,,85000
-2026-10-05,,Transfer,HDFC Bank,Home Loan,,,,21500
+Date,Time,Type,Account,To Account,Category,Subcategory,Note,Amount,Tags
+2026-10-24,08:15,Expense,HDFC Bank,,Dairy,Milk,,56,"milk, swiggy instamart"
+2026-10-01,,Income,HDFC Bank,,Salary,,,85000,
+2026-10-05,,Transfer,HDFC Bank,Home Loan,,,,21500,
 ```
 
 - **Required columns:** `Date`, `Account`, `Type` (`Expense` / `Income` / `Transfer`) and `Amount`.
 - **Dates:** `YYYY-MM-DD` or `DD/MM/YYYY`.
 - **Matching:** accounts, categories and subcategories are matched by name (case and punctuation insensitive). Missing ones are created.
+- **Tags:** optional `Tags` column, separated by commas or semicolons. A leading `#` is ignored and tags match existing ones regardless of case.
 - **Duplicates:** rows already in the app are skipped, so re-importing the same file is safe.
 
 ## License

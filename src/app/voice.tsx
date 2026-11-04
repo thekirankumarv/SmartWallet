@@ -40,6 +40,7 @@ export default function VoiceReview() {
         ...(d.c && { c: d.c }),
         ...(d.s && { s: d.s }),
         ...(d.n && { note: d.n }),
+        ...(d.g?.length && { tags: d.g.join(',') }),
       },
     });
   };
@@ -70,7 +71,7 @@ export default function VoiceReview() {
             {drafts.map((d, i) => {
               const c = catById(store.cats, d.c);
               const title = d.t === 'x' ? `${acc(d.a)} → ${d.to ? acc(d.to) : '?'}` : (subName(c, d.s) ?? c?.name ?? 'Pick a category');
-              const meta = [dayLabel(d.d), d.t === 'x' ? 'Transfer' : subName(c, d.s) && c?.name, d.t !== 'x' && acc(d.a), d.n].filter(Boolean).join(' · ');
+              const meta = [dayLabel(d.d), d.t === 'x' ? 'Transfer' : subName(c, d.s) && c?.name, d.t !== 'x' && acc(d.a), d.n, d.g?.map((g) => `#${g}`).join(' ')].filter(Boolean).join(' · ');
               return (
                 <Pressable key={i} onPress={() => edit(i)} style={({ pressed }) => [s.rowItem, pressed && { backgroundColor: C.card2 }]}>
                   <Bubble emoji={d.t === 'x' ? '🔁' : (c?.icon ?? '❔')} />

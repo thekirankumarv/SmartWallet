@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addDays, calc, dayLabel, fmt, hm, today, toPaise } from '../lib/money';
-import { useStore, type Draft } from '../lib/store';
+import { allTags, tidyTags, useStore, type Draft } from '../lib/store';
 import { ADJ_E, ADJ_I } from '../lib/seed';
 import type { TxType } from '../lib/types';
 import { Btn, C, Chip, Chips, Empty, IconBtn, pickDate, s, Seg, tap, TX_COLOR, goBack, confirmDelete, notify } from '../components/ui';
@@ -38,6 +38,7 @@ export default function TxScreen() {
     c?: string;
     s?: string;
     note?: string;
+    tags?: string; // comma separated
   }>();
   const store = useStore();
   const editing = p.id ? store.txs.find((t) => t.id === p.id) : undefined;
@@ -51,6 +52,14 @@ export default function TxScreen() {
   const [c, setC] = useState(editing?.c ?? p.c);
   const [sub, setSub] = useState(editing?.s ?? p.s);
   const [note, setNote] = useState(editing?.n ?? p.note ?? '');
+  const [tags, setTags] = useState<string[]>(editing?.g ?? tidyTags([p.tags ?? '']));
+  const [newTag, setNewTag] = useState('');
+  const known = useMemo(() => allTags(store.txs), [store.txs]);
+  const toggleTag = (g: string) => setTags((ts) => (ts.includes(g) ? ts.filter((x) => x !== g) : [...ts, g]));
+  const addTag = () => {
+    if (newTag.trim()) setTags(tidyTags([...tags, newTag], known));
+    setNewTag('');
+  };
   const [typing, setTyping] = useState(false);
   useEffect(() => {
     const l = Keyboard.addListener('keyboardDidHide', () => setTyping(false));
@@ -87,6 +96,7 @@ export default function TxScreen() {
     c: t === 'x' ? undefined : c,
     s: t === 'x' ? undefined : sub,
     n: note,
+    g: tags,
   });
 
   const save = (again?: boolean) => {
@@ -239,6 +249,31 @@ export default function TxScreen() {
             onFocus={() => setTyping(true)}
             onBlur={() => setTyping(false)}
             placeholder="Optional"
+            placeholderTextColor={C.dim}
+            selectionColor={C.accent}
+            style={s.input}
+          />
+        </View>
+
+        <View style={st.group}>
+          <Label icon="pricetags-outline" text="Tags" />
+          {(tags.length > 0 || known.length > 0) && (
+            <View style={st.subs}>
+              {[...tags.filter((g) => !known.includes(g)), ...known].map((g) => (
+                <Chip key={g} label={`#${g}`} active={tags.includes(g)} onPress={() => toggleTag(g)} color={color} />
+              ))}
+            </View>
+          )}
+          <TextInput
+            value={newTag}
+            onChangeText={setNewTag}
+            onSubmitEditing={addTag}
+            onFocus={() => setTyping(true)}
+            onBlur={() => (addTag(), setTyping(false))}
+            submitBehavior="submit"
+            returnKeyType="done"
+            autoCapitalize="none"
+            placeholder="New tag, e.g. milk, instamart"
             placeholderTextColor={C.dim}
             selectionColor={C.accent}
             style={s.input}

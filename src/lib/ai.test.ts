@@ -120,6 +120,19 @@ assert.deepEqual(bad.drafts[1], { t: 'e', amt: 100_00, d: TODAY, a: 'cash', c: '
 assert.equal(bad.drafts[2].c, undefined); // expense category for income
 assert.deepEqual(problems(bad.drafts, s), ['Pick a category', undefined, 'Pick a category', 'Pick where the money goes']);
 
+// tags: offered only when some exist, unknown ones dropped, spelling from the list
+assert.equal('tags' in item, false);
+const st: Data = { ...s, txs: [{ id: 't1', t: 'e', amt: 100, d: TODAY, a: 'cash', c: 'dairy', g: ['milk', 'Swiggy Instamart'] }] };
+const treq = buildRequest(st, TODAY, { data: 'AAAA', mimeType: 'audio/mp4' });
+assert.match(treq.systemInstruction.parts[0].text, /Tags:\n- milk\n- Swiggy Instamart/);
+assert.deepEqual((treq.generationConfig.responseSchema.properties.entries.items.properties as Record<string, { items?: { enum?: string[] } }>).tags.items!.enum, ['milk', 'Swiggy Instamart']);
+const tp = parseReply(
+  reply({ heard: 'milk 47 on instamart', entries: [{ type: 'expense', amount: 47, date: TODAY, category: 'dairy', account: 'cash', tags: ['swiggy instamart', 'MILK', 'made up', 5] }] }),
+  st,
+  TODAY,
+);
+assert.deepEqual(tp.drafts[0].g, ['Swiggy Instamart', 'milk']);
+
 const throwsTitle = (r: unknown, title: string) =>
   assert.throws(
     () => parseReply(r, s, TODAY),
