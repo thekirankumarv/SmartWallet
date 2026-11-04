@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
+import { PanResponder, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addMonths, dayLabel, fmt, lastDayOf, monthLabel, monthOf, today } from '../../lib/money';
 import { flows, useStore } from '../../lib/store';
@@ -16,6 +16,19 @@ export default function Home() {
   const accounts = useStore((st) => st.accounts);
   const cats = useStore((st) => st.cats);
   const error = useStore((st) => st.loadError || st.saveError);
+  // Swipe right → previous month, swipe left → next month.
+  const swipe = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dx) > 20 && Math.abs(g.dx) > Math.abs(g.dy) * 2,
+        onPanResponderRelease: (_, g) => {
+          if (Math.abs(g.dx) < 60) return;
+          tap();
+          setMonth((m) => addMonths(m, g.dx > 0 ? -1 : 1));
+        },
+      }),
+    []
+  );
 
   const { sections, inc, exp, budget } = useMemo(() => {
     const from = `${month}-01`;
@@ -36,7 +49,7 @@ export default function Home() {
 
   const cur = month === monthOf(today());
   return (
-    <View style={[s.fill, { paddingTop: ins.top + 8 }]}>
+    <View style={[s.fill, { paddingTop: ins.top + 8 }]} {...swipe.panHandlers}>
       <SectionList
         sections={sections}
         keyExtractor={(t) => t.id}
