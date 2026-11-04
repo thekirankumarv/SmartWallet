@@ -6,7 +6,7 @@ import type { Draft } from './ledger';
 import { seed } from './seed';
 import type { Account, Category, Data } from './types';
 
-export const { balances, flows, allTags, tidyTags } = L;
+export const { balances, flows, allTags, tidyTags, summary, cardStatus, canSpend, isDebt } = L;
 export const parseBackup = L.parse;
 export type { Flow } from './ledger';
 

@@ -146,4 +146,82 @@ tg = L.deleteTag(tg, 'veg');
 assert.equal(tg.txs.find((t) => t.amt === 300)!.g, undefined);
 assert.deepEqual(tg.txs.find((t) => t.amt === 200)!.g, ['instamart']);
 
+// credit cards: the full workflow
+{
+  let w: Data = seed();
+  const bal = (id: string) => L.balances(w)[id];
+  const card = (id: string) => L.cardStatus(w.accounts.find((a) => a.id === id)!, bal(id));
+  const spent = () => L.flows(w, '2026-01-01', '2026-12-31').filter((f) => f.kind === 'e').reduce((a, f) => a + f.amt, 0);
+  w = L.saveAccount(w, { id: 'fed', name: 'Federal Bank', type: 'bank', open: 50000_00 });
+  // 1. regular card, 2. FD-backed card: the FD is its own asset account, the card only links to it
+  w = L.saveAccount(w, { id: 'hdfc', name: 'HDFC Millennia', bank: 'HDFC', type: 'card', open: 0, limit: 100000_00, bill: 20, due: 8 });
+  w = L.saveAccount(w, { id: 'idfcfd', name: 'IDFC FIRST FD', type: 'fd', open: 5000_00, ref: 'FD123' });
+  w = L.saveAccount(w, { id: 'idfc', name: 'IDFC FIRST WOW', bank: 'IDFC FIRST', type: 'card', open: 0, limit: 5000_00, fd: 'idfcfd' });
+  assert.deepEqual(L.summary(w), { assets: 55000_00, liabilities: 0, net: 55000_00 }); // 9. FD counted once, limits never
+
+  // 3–4. laptop on the regular card: expense recorded, bank untouched
+  w = ok(L.addTxs(w, [{ t: 'e', amt: 60000_00, d: '2026-10-10', a: 'hdfc', c: 'shop', s: 'shop-2', n: 'Laptop' }]));
+  assert.equal(card('hdfc').outstanding, 60000_00);
+  assert.equal(card('hdfc').available, 40000_00);
+  assert.equal(card('hdfc').util, 0.6);
+  assert.equal(bal('fed'), 50000_00);
+  assert.equal(spent(), 60000_00);
+
+  // 5–8. partial repayment from Federal Bank is a transfer: bank down, outstanding down, no new expense
+  w = ok(L.addTxs(w, [{ t: 'x', amt: 20000_00, d: '2026-10-15', a: 'fed', to: 'hdfc', n: 'Card bill' }]));
+  assert.equal(bal('fed'), 30000_00);
+  assert.equal(card('hdfc').outstanding, 40000_00);
+  assert.equal(card('hdfc').available, 60000_00);
+  assert.equal(spent(), 60000_00);
+  const pay = w.txs.find((t) => t.t === 'x')!;
+  assert.ok([pay.a, pay.to].includes('fed') && [pay.a, pay.to].includes('hdfc')); // one record in both histories
+
+  // 10–11. outstanding is a liability, net worth = assets − liabilities
+  assert.deepEqual(L.summary(w), { assets: 35000_00, liabilities: 40000_00, net: -5000_00 });
+
+  // limit: can't spend past available credit, adjustments exempt
+  assert.equal(L.addTxs(w, [{ t: 'e', amt: 60000_01, d: '2026-10-16', a: 'hdfc', c: 'shop' }]).error, 'Only ₹60,000 credit left on HDFC Millennia');
+  assert.equal(L.addTxs(w, [{ t: 'x', amt: 60000_01, d: '2026-10-16', a: 'hdfc', to: 'fed' }]).error?.startsWith('Only'), true);
+  assert.match(L.addTxs(w, [{ t: 'e', amt: 40000_00, d: '2026-10-16', a: 'hdfc', c: 'shop' }, { t: 'e', amt: 30000_00, d: '2026-10-16', a: 'hdfc', c: 'shop' }]).error!, /^#2: Only/);
+  assert.equal(L.addTxs(w, [{ t: 'e', amt: 60000_00, d: '2026-10-16', a: 'hdfc', c: 'shop' }]).error, undefined); // exactly to the limit
+  assert.equal(L.addTxs(w, [{ t: 'e', amt: 90000_00, d: '2026-10-16', a: 'hdfc', c: ADJ_E }]).error, undefined);
+
+  // 12. refund on the card lowers outstanding
+  w = ok(L.addTxs(w, [{ t: 'i', amt: 5000_00, d: '2026-10-17', a: 'hdfc', c: 'ref', n: 'Laptop bag refund' }]));
+  assert.equal(card('hdfc').outstanding, 35000_00);
+  // edit the laptop up to the limit headroom, and past it
+  const laptop = w.txs.find((t) => t.n === 'Laptop')!;
+  const asDraft = ({ id: _, ...d }: typeof laptop) => d;
+  assert.match(L.updateTx(w, laptop.id, { ...asDraft(laptop), amt: 125000_01 }).error!, /^Only/);
+  w = ok(L.updateTx(w, laptop.id, { ...asDraft(laptop), amt: 65000_00 }));
+  assert.equal(card('hdfc').outstanding, 40000_00);
+  // already over the limit (e.g. limit lowered): editing a note still works, raising the amount doesn't
+  w = L.saveAccount(w, { ...w.accounts.find((a) => a.id === 'hdfc')!, limit: 30000_00 });
+  assert.equal(card('hdfc').available, 0);
+  const lap2 = w.txs.find((t) => t.id === laptop.id)!;
+  w = ok(L.updateTx(w, lap2.id, { ...asDraft(lap2), n: 'Laptop (work)' }));
+  assert.match(L.updateTx(w, lap2.id, { ...asDraft(lap2), amt: 65000_01 }).error!, /^Only ₹55,000 /); // headroom for this entry, excluding itself
+  w = L.saveAccount(w, { ...w.accounts.find((a) => a.id === 'hdfc')!, limit: 100000_00 });
+
+  // full repayment, then overpay: card in credit counts as an asset
+  w = ok(L.addTxs(w, [{ t: 'x', amt: 40000_00, d: '2026-10-20', a: 'fed', to: 'hdfc' }]));
+  assert.equal(card('hdfc').outstanding, 0);
+  assert.equal(card('hdfc').available, 100000_00);
+  w = ok(L.addTxs(w, [{ t: 'x', amt: 1000_00, d: '2026-10-21', a: 'fed', to: 'hdfc' }]));
+  assert.equal(card('hdfc').credit, 1000_00);
+  assert.deepEqual(L.summary(w), { assets: -11000_00 + 5000_00 + 1000_00, liabilities: 0, net: -5000_00 });
+
+  // deleting (reversing) the repayment restores both sides
+  w = L.deleteTx(w, pay.id);
+  assert.equal(card('hdfc').outstanding, 19000_00);
+  assert.equal(bal('fed'), 50000_00 - 40000_00 - 1000_00);
+  assert.equal(spent(), 65000_00);
+
+  // FD-backed card spends within its own limit; deleting the FD unlinks the card
+  assert.match(L.addTxs(w, [{ t: 'e', amt: 5000_01, d: '2026-10-22', a: 'idfc', c: 'shop' }]).error!, /^Only ₹5,000 /);
+  w = ok(L.deleteAccount(w, 'idfcfd'));
+  assert.equal(w.accounts.find((a) => a.id === 'idfc')!.fd, undefined);
+  assert.ok(L.canSpend({ type: 'card' }) && !L.canSpend({ type: 'fd' }) && !L.canSpend({ type: 'loan' }));
+}
+
 console.log('ledger ok');

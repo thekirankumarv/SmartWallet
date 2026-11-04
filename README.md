@@ -57,8 +57,11 @@ Log expenses in seconds by tapping or just speaking, see where your money goes, 
 
 ### Accounts
 - Bank accounts, cash, wallets, credit cards and your own custom types, all created by the user
-- Credit card dues shown as the amount owed
-- Live balances, net worth, assets vs liabilities
+- **Credit cards**, regular or FD-backed: limit, outstanding, available credit, utilisation, statement and due day, with an overview screen and per-card spending/payment history
+- Spending on a card is an expense on the card (your bank isn't touched); **Pay bill** is a transfer from a bank to the card, so it settles the due without counting as another expense
+- Spending past a card's available credit is blocked
+- **Fixed deposits** as their own asset type. An FD-backed card links to its FD: the deposit counts once as an asset, the limit is never counted
+- Live balances, net worth, assets vs liabilities. Liabilities are actual card dues and loans; an overpaid card counts as an asset
 - Transfers between accounts; balance corrections are recorded as adjustments, never silent edits
 - Hide accounts you no longer use without losing history
 
@@ -116,6 +119,7 @@ src/
 │   ├── (tabs)/             Transactions, Stats, Accounts, Loans, Settings
 │   ├── account/            Account detail and editor
 │   ├── category/           Category editor
+│   ├── cards.tsx           Credit card overview
 │   ├── categories.tsx      Category list
 │   ├── search.tsx          Search and filters
 │   ├── tags.tsx            Rename, merge, delete tags
@@ -178,6 +182,7 @@ The end-to-end suite starts from a fresh install and walks through:
 - adding, editing and deleting transactions (cancel and confirm)
 - transfers and income
 - adding a loan and paying an EMI
+- regular and FD-backed credit cards: spending, the limit guard, paying a bill, net worth
 - stats
 - the guards that stop deleting accounts and categories still in use
 - category and subcategory management

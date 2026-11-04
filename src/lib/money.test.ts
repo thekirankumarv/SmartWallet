@@ -1,6 +1,6 @@
 // Run: npx tsx src/lib/money.test.ts
 import assert from 'node:assert/strict';
-import { addDays, addMonths, calc, fmt, fmtShort, isValidYmd, lastDayOf, monthsLeft, ymd } from './money';
+import { addDays, addMonths, calc, fmt, fmtShort, isValidYmd, lastDayOf, monthsLeft, nextDay, ymd } from './money';
 
 assert.equal(calc('47+205'), 252);
 assert.equal(calc('2+3×4'), 14);
@@ -32,5 +32,12 @@ assert.equal(ymd(new Date(2026, 9, 25, 0, 30)), '2026-10-25');
 assert.equal(monthsLeft(240000_00, 20024_00, 0), 12);
 assert.equal(monthsLeft(100, 0, 10), Infinity);
 assert.ok(monthsLeft(240000_00, 20024_00, 9) === 13);
+
+// card due dates
+assert.equal(nextDay(15, '2026-11-04'), '2026-11-15');
+assert.equal(nextDay(4, '2026-11-04'), '2026-11-04');
+assert.equal(nextDay(2, '2026-11-04'), '2026-12-02');
+assert.equal(nextDay(31, '2026-02-10'), '2026-02-28');
+assert.equal(nextDay(30, '2026-12-31'), '2027-01-30');
 
 console.log('money ok');

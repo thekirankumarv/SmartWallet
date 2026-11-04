@@ -144,7 +144,7 @@ async function run(page) {
     await fill('0', '2500');
     await tap('Save');
     await go('/accounts');
-    await check('card owed shown as positive amount', (async () => (await has('Owed ₹2,500')) && (await not('-₹2,500')))());
+    await check('card outstanding shown as positive amount', (async () => (await has('₹2,500')) && (await not('-₹2,500')) && (await has('Overview ›')))());
 
     await go('/account/edit', 600);
     await fill('e.g. HDFC Savings, Paytm, Cash', 'Mutual Funds');
@@ -198,7 +198,7 @@ async function run(page) {
     await check('category deleted', not('Pets'));
 
     await go('/search', 600);
-    await page.getByPlaceholder('Note, category, account, amount…').fill('salary');
+    await page.getByPlaceholder('Note, category, tag, account, amount…').fill('salary');
     await wait(400);
     await check('search finds salary', has('1 results'));
 
@@ -241,8 +241,66 @@ async function run(page) {
     await tap('Save');
     await check('reviewed entry saved', Promise.resolve((await stored()).txs.some((t) => t.amt === 4700 && t.s === 'dairy-0' && t.a === cashId)));
 
+    // credit cards: regular + FD-backed, spend, limit guard, partial bill payment
+    await go('/account/edit?type=card', 600);
+    await fill('e.g. HDFC Millennia', 'Millennia');
+    await fill('e.g. HDFC Bank', 'HDFC Bank');
+    await fill('e.g. 100000', '100000');
+    await page.getByPlaceholder('1–31', { exact: true }).last().fill('8');
+    await tap('Save');
+    await go('/account/edit?type=card', 600);
+    await fill('e.g. HDFC Millennia', 'WOW');
+    await fill('e.g. HDFC Bank', 'IDFC FIRST');
+    await tap('FD-backed');
+    await fill('e.g. 5000', '5000');
+    await tap('Save');
+    let st = await stored();
+    const mil = st.accounts.find((a) => a.name === 'Millennia');
+    const wow = st.accounts.find((a) => a.name === 'WOW');
+    const fdAcc = st.accounts.find((a) => a.id === wow.fd);
+    await check('regular card saved with limit and due day', Promise.resolve(mil.limit === 100000_00 && mil.due === 8 && mil.open === 0 && !mil.fd));
+    await check(
+      'FD-backed card: FD is a separate asset, limit defaults to FD, nothing owed',
+      Promise.resolve(fdAcc?.type === 'fd' && fdAcc.open === 5000_00 && wow.limit === 5000_00 && wow.open === 0),
+    );
+    await go('/cards');
+    await check('cards overview shows both types', (async () => (await has('🔒 FD-backed')) && (await has('Regular')) && (await has('₹1,05,000')))());
+
+    await go('/tx');
+    await tap('Shopping');
+    await tap('Electronics');
+    await keys(['6', '0', '0', '0', '0']);
+    await tap('Millennia · ₹1,00,000 left');
+    await tap('Save');
+    await go(`/account/${mil.id}`);
+    await check('laptop on card: outstanding 60,000, available 40,000', (async () => (await has('₹60,000')) && (await has('₹40,000')) && (await has('60% of limit used')))());
+    await go('/tx');
+    await tap('Shopping');
+    await keys(['4', '0', '0', '0', '1']);
+    await tap('Millennia · ₹40,000 left');
+    await tap('Save');
+    await check('spend past available credit blocked', (await dialog()).includes('Only ₹40,000 credit left on Millennia'));
+    await answer('OK');
+
+    await go(`/account/${mil.id}`);
+    await tap('Pay bill');
+    await check('Pay bill pre-fills outstanding', has('₹60000'));
+    await keys(['Backspace', 'Backspace', 'Backspace', 'Backspace', 'Backspace', '2', '0', '0', '0', '0']);
+    await tap('Save');
+    st = await stored();
+    const bank = st.accounts.find((a) => a.name === 'HDFC');
+    const payTx = st.txs.find((t) => t.t === 'x' && t.to === mil.id);
+    await check('bill paid from bank by transfer', Promise.resolve(payTx?.a === bank.id && payTx.amt === 20000_00));
+    await go(`/account/${mil.id}`);
+    await check('after payment: outstanding 40,000, available 60,000', (async () => (await has('₹40,000')) && (await has('₹60,000')) && (await has('Payments & refunds')))());
+    await go('/stats');
+    await check('repayment not counted as expense (EMI 12,500 + laptop 60,000 + milk 47)', (async () => (await has('₹72.5k')) && (await not('₹92.5k')))());
+
     await go('/accounts', 1000);
-    await check('data persists after reload (HDFC paid EMI)', has('₹42,000'));
+    // assets: HDFC 22,000 + Cash 953 + MF 7,000 + Spare 3,000.87 + FD 5,000; liabilities: Visa 2,500 + card 40,000 + loan 2,87,500
+    await check('liabilities = card dues + loan, limits excluded', has('₹3,30,000'));
+    await check('net worth = assets − liabilities', has('-₹2,92,046.13'));
+    await check('data persists after reload (HDFC paid EMI and card bill)', has('₹22,000'));
   } catch (e) {
     log.push('ERROR ' + e.message.split('\n')[0]);
   }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addDays, calc, dayLabel, fmt, hm, today, toPaise } from '../lib/money';
-import { allTags, tidyTags, useStore, type Draft } from '../lib/store';
+import { allTags, balances, canSpend, cardStatus, tidyTags, useStore, type Draft } from '../lib/store';
 import { ADJ_E, ADJ_I } from '../lib/seed';
 import type { TxType } from '../lib/types';
 import { Btn, C, Chip, Chips, Empty, IconBtn, pickDate, s, Seg, tap, TX_COLOR, goBack, confirmDelete, notify } from '../components/ui';
@@ -46,7 +46,7 @@ export default function TxScreen() {
   const [t, setT] = useState<TxType>(editing?.t ?? p.type ?? 'e');
   const [expr, setExpr] = useState(editing ? String(editing.amt / 100) : (p.amt ?? ''));
   const [d, setD] = useState(editing?.d ?? p.date ?? today());
-  const usable = store.accounts.filter((x) => !x.hidden && x.type !== 'loan');
+  const usable = store.accounts.filter((x) => !x.hidden && canSpend(x));
   const [a, setA] = useState(editing?.a ?? p.from ?? usable.find((x) => x.id === store.lastAcc)?.id ?? usable[0]?.id);
   const [to, setTo] = useState(editing?.to ?? p.to);
   const [c, setC] = useState(editing?.c ?? p.c);
@@ -67,7 +67,7 @@ export default function TxScreen() {
   }, []);
   const [pickCat, setPickCat] = useState(!editing && !p.c);
 
-  const accounts = store.accounts.filter((x) => (!x.hidden || x.id === a || x.id === to) && (t === 'x' || x.type !== 'loan' || x.id === a));
+  const accounts = store.accounts.filter((x) => (!x.hidden || x.id === a || x.id === to) && (t === 'x' || canSpend(x) || x.id === a));
   const cats = useMemo(() => store.cats.filter((x) => x.kind === t && (!x.hidden || x.id === c) && x.id !== ADJ_E && x.id !== ADJ_I), [store.cats, t, c]);
   const cat = store.cats.find((x) => x.id === c);
   const value = calc(expr);
@@ -115,12 +115,14 @@ export default function TxScreen() {
     });
 
   const color = TX_COLOR[t];
+  const bal = useMemo(() => balances(store), [store]);
+  const accLabel = (x: (typeof accounts)[number]) => (x.type === 'card' && x.limit ? `${x.name} · ${fmt(cardStatus(x, bal[x.id]).available)} left` : x.name);
   const accountPicker = (
     <View style={st.group}>
       <Label icon="wallet-outline" text={t === 'x' ? 'From' : 'Account'} />
       <Chips>
         {accounts.map((x) => (
-          <Chip key={x.id} label={x.name} active={a === x.id} onPress={() => setA(x.id)} color={color} />
+          <Chip key={x.id} label={accLabel(x)} active={a === x.id} onPress={() => setA(x.id)} color={color} />
         ))}
       </Chips>
     </View>

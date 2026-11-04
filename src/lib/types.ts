@@ -1,4 +1,4 @@
-// built-in: bank, cash, wallet, card, loan; any other name is a user-defined asset type
+// built-in: bank, cash, wallet, card, fd, loan; any other name is a user-defined asset type
 export type AccountType = string;
 export type TxType = 'e' | 'i' | 'x'; // expense, income, transfer
 export type CatKind = 'e' | 'i';
@@ -12,6 +12,14 @@ export interface Account {
   rate?: number; // loan: annual interest %
   emi?: number; // loan: monthly payment in paise
   accrued?: string; // loan: last 'YYYY-MM' interest was posted for
+  bank?: string; // card: issuing bank
+  limit?: number; // card: credit limit in paise. Never counted as an asset or liability
+  bill?: number; // card: statement day of month (1-31)
+  due?: number; // card: payment due day of month (1-31)
+  fd?: string; // card: id of the 'fd' account securing it (FD-backed card)
+  ref?: string; // fd: deposit / receipt number
+  maturity?: string; // fd: 'YYYY-MM-DD'
+  fdRate?: number; // fd: annual interest %
 }
 
 export interface Sub {

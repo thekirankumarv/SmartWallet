@@ -1,8 +1,13 @@
-import { addMonths, isValidYmd, lastDayOf, monthOf, today, uid } from './money';
+import { addMonths, fmt, isValidYmd, lastDayOf, monthOf, today, uid } from './money';
 import { ADJ_E, ADJ_I, INTEREST_SUB, LOAN_CAT } from './seed';
-import type { Account, Category, Data, Tx } from './types';
+import type { Account, AccountType, Category, Data, Tx } from './types';
 
 export type Draft = Omit<Tx, 'id'>;
+
+// Cards and loans carry what you owe (negative balance). Everything else, FDs included, is what you own.
+export const isDebt = (t: AccountType) => t === 'loan' || t === 'card';
+// Loans and FDs aren't paid from directly; money only moves in or out of them by transfer.
+export const canSpend = (a: Pick<Account, 'type'>) => a.type !== 'loan' && a.type !== 'fd';
 
 export function parse(raw: string): Data {
   let d;
@@ -16,7 +21,7 @@ export function parse(raw: string): Data {
   return d;
 }
 
-export function validate(d: Draft, s: Data): string | undefined {
+export function validate(d: Draft, s: Data, was?: number): string | undefined {
   if (!Number.isInteger(d.amt) || d.amt <= 0) return 'Amount must be more than 0';
   if (!isValidYmd(d.d)) return 'Invalid date';
   if (!s.accounts.some((a) => a.id === d.a)) return 'Pick an account';
@@ -29,6 +34,17 @@ export function validate(d: Draft, s: Data): string | undefined {
     if (c.kind !== d.t) return 'Category type mismatch';
     if (d.s && !c.subs.some((x) => x.id === d.s)) return 'Unknown subcategory';
   }
+  return overLimit(d, s, was);
+}
+
+// Blocks a card spend (expense or transfer out) that would push outstanding past the limit.
+// `was` is the outstanding before this entry, so editing an entry on a card that is already over isn't blocked unless it makes it worse.
+function overLimit(d: Draft, s: Data, was?: number): string | undefined {
+  const card = s.accounts.find((a) => a.id === d.a);
+  if (card?.type !== 'card' || !card.limit || d.t === 'i' || d.c === ADJ_E) return;
+  const before = -balances({ accounts: [card], txs: s.txs })[card.id]; // negative when the card is in credit
+  const after = before + d.amt;
+  if (after > card.limit && after > (was ?? before)) return `Only ${fmt(Math.max(0, card.limit - before))} credit left on ${card.name}`;
 }
 
 // Every tag in use, most used first.
@@ -103,6 +119,26 @@ export function accrue(s: Data, now = today()): Data | null {
   return changed ? { ...s, accounts, txs: sortTxs([...txs]) } : null;
 }
 
+// Net worth: every account balance counted once. A card or loan in credit (overpaid) is money owed to you, so it's an asset.
+// Credit limits are never part of it.
+export function summary(s: Pick<Data, 'accounts' | 'txs'>) {
+  const b = balances(s);
+  let assets = 0;
+  let liabilities = 0;
+  for (const a of s.accounts) {
+    const v = b[a.id];
+    if (isDebt(a.type) && v < 0) liabilities -= v;
+    else assets += v;
+  }
+  return { assets, liabilities, net: assets - liabilities };
+}
+
+export function cardStatus(card: Account, balance: number) {
+  const outstanding = Math.max(0, -balance);
+  const limit = card.limit ?? 0;
+  return { limit, outstanding, credit: Math.max(0, balance), available: Math.max(0, limit - outstanding), util: limit ? outstanding / limit : 0 };
+}
+
 export interface Flow {
   kind: 'e' | 'i';
   c: string;
@@ -127,20 +163,23 @@ export function flows(s: Pick<Data, 'accounts' | 'txs'>, from: string, to: strin
 export type Result = { data: Data; error?: string };
 
 export function addTxs(s: Data, drafts: Draft[]): Result {
+  const known = [...allTags(s.txs), ...allTags(drafts)]; // existing spelling wins, then first in this batch
+  const added = drafts.map((d) => ({ id: uid(), ...clean(d, known) }));
+  // Checked one after another so several entries on one card can't jointly pass its limit.
   const errors = drafts.map((d, i) => {
-    const e = validate(d, s);
+    const e = validate(d, { ...s, txs: [...s.txs, ...added.slice(0, i)] });
     return e && (drafts.length > 1 ? `#${i + 1}: ${e}` : e);
   });
   const error = errors.filter(Boolean).join('\n');
   if (error) return { data: s, error };
-  const known = [...allTags(s.txs), ...allTags(drafts)]; // existing spelling wins, then first in this batch
-  const added = drafts.map((d) => ({ id: uid(), ...clean(d, known) }));
   const last = drafts.filter((d) => d.c !== ADJ_E && d.c !== ADJ_I).pop();
   return { data: { ...s, txs: sortTxs([...s.txs, ...added]), lastAcc: last?.a ?? s.lastAcc } };
 }
 
 export function updateTx(s: Data, id: string, d: Draft): Result {
-  const error = validate(d, s);
+  const card = s.accounts.find((a) => a.id === d.a);
+  const was = card && -balances({ accounts: [card], txs: s.txs })[card.id];
+  const error = validate(d, { ...s, txs: s.txs.filter((t) => t.id !== id) }, was);
   if (error) return { data: s, error };
   return { data: { ...s, txs: sortTxs(s.txs.map((t) => (t.id === id ? { id, ...clean(d, allTags(s.txs)) } : t))) } };
 }
@@ -155,7 +194,8 @@ export function saveAccount(s: Data, a: Account, now = today()): Data {
 
 export function deleteAccount(s: Data, id: string): Result {
   if (s.txs.some((t) => t.a === id || t.to === id)) return { data: s, error: 'This account has transactions. Hide it instead.' };
-  return { data: { ...s, accounts: s.accounts.filter((a) => a.id !== id), lastAcc: s.lastAcc === id ? undefined : s.lastAcc } };
+  const accounts = s.accounts.filter((a) => a.id !== id).map((a) => (a.fd === id ? { ...a, fd: undefined } : a));
+  return { data: { ...s, accounts, lastAcc: s.lastAcc === id ? undefined : s.lastAcc } };
 }
 
 export function saveCategory(s: Data, c: Category): Data {

@@ -106,3 +106,10 @@ export function monthsLeft(owed: number, emi: number, rate: number) {
   if (x <= 0) return Infinity;
   return Math.ceil(-Math.log(x) / Math.log(1 + r));
 }
+
+// Next date on or after `from` that falls on day-of-month `day` (31 → last day of short months).
+export function nextDay(day: number, from: string) {
+  const at = (ym: string) => `${ym}-${pad(Math.min(day, +lastDayOf(ym).slice(8)))}`;
+  const d = at(monthOf(from));
+  return d >= from ? d : at(addMonths(monthOf(from), 1));
+}

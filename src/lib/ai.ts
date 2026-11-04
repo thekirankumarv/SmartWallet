@@ -1,6 +1,6 @@
 import { norm } from './csv';
 import type { Draft } from './ledger';
-import { allTags, tidyTags, validate } from './ledger';
+import { allTags, canSpend, tidyTags, validate } from './ledger';
 import { ADJ_E, ADJ_I } from './seed';
 import { isValidYmd, parseYmd, toPaise } from './money';
 import type { Data } from './types';
@@ -116,7 +116,7 @@ export const verifyKey = async (key: string) => {
 const visibleCats = (s: Data, kind: 'e' | 'i') => s.cats.filter((c) => c.kind === kind && !c.hidden && c.id !== ADJ_E && c.id !== ADJ_I);
 const visibleAccs = (s: Data) => s.accounts.filter((a) => !a.hidden);
 const defaultAcc = (s: Data) => {
-  const usable = visibleAccs(s).filter((a) => a.type !== 'loan');
+  const usable = visibleAccs(s).filter(canSpend);
   return usable.find((a) => a.id === s.lastAcc)?.id ?? usable[0]?.id;
 };
 
@@ -232,7 +232,7 @@ export function parseReply(reply: unknown, s: Data, today: string): Parsed {
     const t = e.type === 'income' ? 'i' : e.type === 'transfer' ? 'x' : 'e';
     const d = e.date && isValidYmd(e.date) && e.date <= today ? e.date : today;
     const acc = byIdOrName(accs, e.account);
-    const draft: Draft = { t, amt: toPaise(amount), d, a: acc && (t === 'x' || acc.type !== 'loan') ? acc.id : (fallback ?? '') };
+    const draft: Draft = { t, amt: toPaise(amount), d, a: acc && (t === 'x' || canSpend(acc)) ? acc.id : (fallback ?? '') };
     if (t === 'x') {
       draft.to = byIdOrName(accs, e.to_account)?.id;
     } else {

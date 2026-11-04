@@ -46,9 +46,10 @@ export const ACC_TYPES: [AccountType, string, string][] = [
   ['cash', 'Cash', '💵'],
   ['wallet', 'Wallet', '📱'],
   ['card', 'Credit Card', '💳'],
+  ['fd', 'Fixed Deposit', '🔒'],
   ['loan', 'Loan', '📉'],
 ];
-export const isDebt = (t: AccountType) => t === 'loan' || t === 'card';
+export { isDebt } from '../lib/ledger';
 export const accTypeInfo = (t: AccountType): [label: string, icon: string] => {
   const known = ACC_TYPES.find(([k]) => k === t);
   return known ? [known[1], known[2]] : [t, '🗂️'];
