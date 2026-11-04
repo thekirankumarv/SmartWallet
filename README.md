@@ -37,7 +37,7 @@ Log expenses in seconds by tapping or just speaking, see where your money goes, 
 - Quick date chips (Today / Yesterday) plus a native date picker
 - **+ Next** to log several items in a row without leaving the screen
 - Notes, edit, and delete with confirmation
-- **Tags** for anything categories can't capture: the item (`milk`, `veggies`) and where you bought it (`swiggy instamart`, `bigbasket`, `dmart`). Pick from tags you've used or type a new one
+- **Tags** for anything categories can't capture: the item (`milk`, `veggies`) and where you bought it (`swiggy instamart`, `bigbasket`, `dmart`). Create them once in **Settings → Tags**, then tap to pick them on any transaction
 - Swipe left or right to move between months
 - Month-by-month timeline grouped by day with daily totals
 
@@ -75,7 +75,7 @@ Log expenses in seconds by tapping or just speaking, see where your money goes, 
 - Ships with a clean, standard set (Dairy, Meat & Eggs, Groceries, Bills & Utilities, Vehicle, …)
 - Add, rename, hide or delete categories and subcategories, and set budgets
 - Items in use can only be hidden, so history is never orphaned
-- **Settings → Tags**: rename, merge (rename onto an existing tag) or delete tags
+- **Settings → Tags**: add, rename, merge (rename onto an existing tag) or delete tags
 
 ### Data & backup
 - Search across notes, categories, accounts, tags and amounts, with filters for date range, type, account, category and tags (several tags = must have all)

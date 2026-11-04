@@ -1,4 +1,4 @@
-import { allTags, tidyTags } from './ledger';
+import { tagList, tidyTags } from './ledger';
 import { LOAN_CAT } from './seed';
 import { isValidYmd, toPaise, uid } from './money';
 import type { Account, AccountType, Category, Data, Tx, TxType } from './types';
@@ -116,7 +116,7 @@ export function importCsv(text: string, cur: Data): ImportResult {
   const bad: string[] = [];
   let added = 0;
   let dupes = 0;
-  const known = allTags(cur.txs);
+  const known = tagList(cur);
 
   const account = (name: string) => {
     const n = norm(name);
@@ -182,5 +182,5 @@ export function importCsv(text: string, cur: Data): ImportResult {
     added++;
   });
 
-  return { data: { ...cur, accounts, cats, txs }, added, dupes, bad };
+  return { data: { ...cur, accounts, cats, txs, tags: known }, added, dupes, bad };
 }

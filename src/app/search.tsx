@@ -2,7 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, Text, TextInput, View } from 'react-native';
 import { addMonths, fmt, lastDayOf, monthOf, today } from '../lib/money';
-import { allTags, catById, subName, useStore } from '../lib/store';
+import { tagList, catById, subName, useStore } from '../lib/store';
 import type { TxType } from '../lib/types';
 import { C, Chip, Chips, Empty, Header, pickDate, s, Screen, TxRow } from '../components/ui';
 
@@ -10,13 +10,13 @@ type Range = 'all' | 'month' | 'last' | 'year' | 'custom';
 
 export default function Search() {
   const p = useLocalSearchParams<{ tag?: string; from?: string; to?: string; type?: TxType }>();
-  const { txs, cats, accounts } = useStore();
+  const { txs, cats, accounts, tags: tagSet } = useStore();
   const [q, setQ] = useState('');
   const [type, setType] = useState<TxType | ''>(p.type ?? '');
   const [acc, setAcc] = useState('');
   const [cat, setCat] = useState('');
   const [tags, setTags] = useState<string[]>(p.tag ? [p.tag] : []);
-  const known = useMemo(() => allTags(txs), [txs]);
+  const known = useMemo(() => tagList({ tags: tagSet, txs }), [tagSet, txs]);
   const [range, setRange] = useState<Range>(p.from && p.to ? 'custom' : 'all');
   const [from, setFrom] = useState(p.from ?? `${monthOf(today())}-01`);
   const [to, setTo] = useState(p.to ?? today());

@@ -58,5 +58,6 @@ export interface Data {
   accounts: Account[];
   cats: Category[];
   txs: Tx[];
+  tags?: string[]; // user's tag list, in their order
   lastAcc?: string;
 }

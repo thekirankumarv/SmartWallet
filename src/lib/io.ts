@@ -13,7 +13,7 @@ async function share(name: string, body: string, mimeType: string) {
   await Sharing.shareAsync(f.uri, { mimeType, dialogTitle: 'Save to Google Drive or anywhere' });
 }
 
-export const pickData = (s: Data): Data => ({ v: 1, accounts: s.accounts, cats: s.cats, txs: s.txs, lastAcc: s.lastAcc });
+export const pickData = (s: Data): Data => ({ v: 1, accounts: s.accounts, cats: s.cats, txs: s.txs, tags: s.tags, lastAcc: s.lastAcc });
 export const backupJson = (s: Data) => share(`SmartWallet-backup-${today()}.json`, JSON.stringify(pickData(s)), 'application/json');
 export const exportCsv = (s: Data) => share(`SmartWallet-${today()}.csv`, toCsv(s), 'text/csv');
 

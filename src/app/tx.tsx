@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addDays, calc, dayLabel, fmt, hm, today, toPaise } from '../lib/money';
-import { allTags, balances, canSpend, cardStatus, EMI_SUB, loanPayment, tidyTags, useStore, type Draft } from '../lib/store';
+import { tagList, balances, canSpend, cardStatus, EMI_SUB, loanPayment, tidyTags, useStore, type Draft } from '../lib/store';
 import { ADJ_E, ADJ_I, INTEREST_SUB, LOAN_CAT } from '../lib/seed';
 import type { TxType } from '../lib/types';
 import { Btn, C, Chip, Chips, Empty, IconBtn, pickDate, s, Seg, tap, TX_COLOR, goBack, confirmDelete, notify } from '../components/ui';
@@ -53,13 +53,8 @@ export default function TxScreen() {
   const [sub, setSub] = useState(editing?.s ?? p.s);
   const [note, setNote] = useState(editing?.n ?? p.note ?? '');
   const [tags, setTags] = useState<string[]>(editing?.g ?? tidyTags([p.tags ?? '']));
-  const [newTag, setNewTag] = useState('');
-  const known = useMemo(() => allTags(store.txs), [store.txs]);
+  const known = useMemo(() => tagList(store), [store]);
   const toggleTag = (g: string) => setTags((ts) => (ts.includes(g) ? ts.filter((x) => x !== g) : [...ts, g]));
-  const addTag = () => {
-    if (newTag.trim()) setTags(tidyTags([...tags, newTag], known));
-    setNewTag('');
-  };
   const [typing, setTyping] = useState(false);
   useEffect(() => {
     const l = Keyboard.addListener('keyboardDidHide', () => setTyping(false));
@@ -286,28 +281,21 @@ export default function TxScreen() {
         </View>
 
         <View style={st.group}>
-          <Label icon="pricetags-outline" text="Tags" />
-          {(tags.length > 0 || known.length > 0) && (
+          <View style={[s.row, { justifyContent: 'space-between' }]}>
+            <Label icon="pricetags-outline" text="Tags" />
+            <Pressable hitSlop={10} onPress={() => router.push('/tags')}>
+              <Text style={{ color: C.accent, fontWeight: '700', fontSize: 13 }}>{known.length ? 'Manage' : '+ Add tags'}</Text>
+            </Pressable>
+          </View>
+          {known.length > 0 || tags.length > 0 ? (
             <View style={st.subs}>
               {[...tags.filter((g) => !known.includes(g)), ...known].map((g) => (
                 <Chip key={g} label={`#${g}`} active={tags.includes(g)} onPress={() => toggleTag(g)} color={color} />
               ))}
             </View>
+          ) : (
+            <Text style={s.small}>No tags yet. Create them once in Settings → Tags (e.g. milk, instamart), then tap to use.</Text>
           )}
-          <TextInput
-            value={newTag}
-            onChangeText={setNewTag}
-            onSubmitEditing={addTag}
-            onFocus={() => setTyping(true)}
-            onBlur={() => (addTag(), setTyping(false))}
-            submitBehavior="submit"
-            returnKeyType="done"
-            autoCapitalize="none"
-            placeholder="New tag, e.g. milk, instamart"
-            placeholderTextColor={C.dim}
-            selectionColor={C.accent}
-            style={s.input}
-          />
         </View>
       </ScrollView>
 

@@ -6,7 +6,7 @@ import type { Draft } from './ledger';
 import { seed } from './seed';
 import type { Account, Category, Data } from './types';
 
-export const { balances, flows, allTags, tidyTags, summary, cardStatus, canSpend, isDebt, loanPayment, EMI_SUB } = L;
+export const { balances, flows, allTags, tagList, tidyTags, summary, cardStatus, canSpend, isDebt, loanPayment, EMI_SUB } = L;
 export const parseBackup = L.parse;
 export type { Flow } from './ledger';
 
@@ -23,6 +23,7 @@ interface State extends Data {
   deleteAccount: (id: string) => string | undefined;
   saveCategory: (c: Category) => void;
   deleteCategory: (id: string) => string | undefined;
+  addTag: (name: string) => string | undefined;
   renameTag: (from: string, to: string) => string | undefined;
   deleteTag: (tag: string) => void;
   replaceAll: (d: Data) => void;
@@ -67,21 +68,21 @@ function flush() {
   clearTimeout(timer);
   const s = useStore.getState();
   if (s.loadError || !s.ready) return;
-  const { v, accounts, cats, txs, lastAcc } = s;
+  const { v, accounts, cats, txs, tags, lastAcc } = s;
   try {
-    writeRaw(JSON.stringify({ v, accounts, cats, txs, lastAcc }));
+    writeRaw(JSON.stringify({ v, accounts, cats, txs, tags, lastAcc }));
     if (s.saveError) useStore.setState({ saveError: undefined });
   } catch (e) {
     useStore.setState({ saveError: `Couldn't save: ${String(e)}` });
   }
 }
 function scheduleSave(next: State, prev: State) {
-  if (next.txs === prev.txs && next.accounts === prev.accounts && next.cats === prev.cats && next.lastAcc === prev.lastAcc) return;
+  if (next.txs === prev.txs && next.accounts === prev.accounts && next.cats === prev.cats && next.tags === prev.tags && next.lastAcc === prev.lastAcc) return;
   clearTimeout(timer);
   timer = setTimeout(flush, 250);
 }
 
-const pick = ({ accounts, cats, txs, lastAcc }: Data) => ({ accounts, cats, txs, lastAcc });
+const pick = ({ accounts, cats, txs, tags, lastAcc }: Data) => ({ accounts, cats, txs, tags, lastAcc });
 
 export const useStore = create<State>()((set, get) => {
   const apply = (r: L.Result) => {
@@ -99,9 +100,10 @@ export const useStore = create<State>()((set, get) => {
     deleteAccount: (id) => apply(L.deleteAccount(get(), id)),
     saveCategory: (c) => set(pick(L.saveCategory(get(), c))),
     deleteCategory: (id) => apply(L.deleteCategory(get(), id)),
+    addTag: (name) => apply(L.addTag(get(), name)),
     renameTag: (from, to) => apply(L.renameTag(get(), from, to)),
     deleteTag: (tag) => set(pick(L.deleteTag(get(), tag))),
-    replaceAll: (d) => set({ v: 1, accounts: d.accounts, cats: d.cats, txs: L.sortTxs([...d.txs]), lastAcc: d.lastAcc, loadError: undefined }),
+    replaceAll: (d) => set({ v: 1, accounts: d.accounts, cats: d.cats, txs: L.sortTxs([...d.txs]), tags: d.tags, lastAcc: d.lastAcc, loadError: undefined }),
   };
 });
 

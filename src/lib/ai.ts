@@ -1,6 +1,6 @@
 import { norm } from './csv';
 import type { Draft } from './ledger';
-import { allTags, canSpend, tidyTags, validate } from './ledger';
+import { canSpend, tagList, tidyTags, validate } from './ledger';
 import { ADJ_E, ADJ_I, INTEREST_SUB } from './seed';
 import { isValidYmd, parseYmd, toPaise } from './money';
 import type { Data } from './types';
@@ -123,7 +123,7 @@ const defaultAcc = (s: Data) => {
 export function buildRequest(s: Data, today: string, audio: { data: string; mimeType: string }) {
   const cats = [...visibleCats(s, 'e'), ...visibleCats(s, 'i')];
   const accs = visibleAccs(s);
-  const tags = allTags(s.txs);
+  const tags = tagList(s);
   const weekday = parseYmd(today).toLocaleDateString('en-US', { weekday: 'long' });
   const catLines = (kind: 'e' | 'i') =>
     visibleCats(s, kind)
@@ -225,7 +225,7 @@ export function parseReply(reply: unknown, s: Data, today: string): Parsed {
   }
   const accs = s.accounts;
   const fallback = defaultAcc(s);
-  const known = allTags(s.txs);
+  const known = tagList(s);
   const drafts: Draft[] = [];
   for (const e of out.entries ?? []) {
     const amount = typeof e.amount === 'string' ? parseFloat(e.amount.replace(/[^\d.]/g, '')) : e.amount;

@@ -146,6 +146,23 @@ tg = L.deleteTag(tg, 'veg');
 assert.equal(tg.txs.find((t) => t.amt === 300)!.g, undefined);
 assert.deepEqual(tg.txs.find((t) => t.amt === 200)!.g, ['instamart']);
 
+// tag list: created in Settings, kept in the user's order, old tags on transactions still offered
+{
+  let w: Data = { ...seed(), txs: [{ id: 'o', t: 'e', amt: 100, d: '2026-10-10', a: 'x', c: 'dairy', g: ['old'] }] };
+  assert.deepEqual(L.tagList(w), ['old']);
+  w = ok(L.addTag(w, '#Milk'));
+  w = ok(L.addTag(w, 'dmart'));
+  assert.deepEqual(w.tags, ['old', 'Milk', 'dmart']);
+  assert.equal(L.addTag(w, 'milk').error, '#milk already exists');
+  assert.equal(L.addTag(w, ' # ').error, 'Enter a tag name');
+  w = ok(L.renameTag(w, 'Milk', 'milk'));
+  assert.deepEqual(w.tags, ['old', 'milk', 'dmart']);
+  w = L.deleteTag(w, 'dmart');
+  assert.deepEqual(w.tags, ['old', 'milk']);
+  w = L.deleteTag(w, 'old');
+  assert.deepEqual([w.tags, w.txs[0].g], [['milk'], undefined]);
+}
+
 // credit cards: the full workflow
 {
   let w: Data = seed();

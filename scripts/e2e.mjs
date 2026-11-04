@@ -331,6 +331,24 @@ async function run(page) {
     const edu = (await stored()).accounts.find((a) => a.name === 'Edu Loan');
     await go(`/account/${edu.id}`);
     await check('loan history labels the payment', (async () => (await has('Loan EMI')) && (await has('Loan Interest')))());
+
+    // tags: created once in Settings → Tags, then picked on a transaction
+    await go('/tags');
+    await fill('e.g. milk, swiggy instamart, dmart', 'swiggy instamart');
+    await tap('Add');
+    await fill('e.g. milk, swiggy instamart, dmart', '#Milk');
+    await page.keyboard.press('Enter');
+    await wait();
+    await check('tags created in Settings', (async () => (await has('#swiggy instamart')) && (await has('#Milk')) && (await has('Not used yet')))());
+    await go('/tx');
+    await check('transaction offers saved tags, no typing', (async () => (await has('#swiggy instamart')) && (await page.getByPlaceholder('New tag, e.g. milk, instamart').count()) === 0)());
+    await tap('Dairy');
+    await keys(['3', '0']);
+    await tap('#Milk');
+    await tap('#swiggy instamart');
+    await tap('Save');
+    await check('picked tags saved on transaction', Promise.resolve((await stored()).txs.some((t) => t.amt === 3000 && t.g?.join() === 'Milk,swiggy instamart')));
+    await check('tag list persisted', Promise.resolve((await stored()).tags?.join() === 'swiggy instamart,Milk'));
   } catch (e) {
     log.push('ERROR ' + e.message.split('\n')[0]);
   }
